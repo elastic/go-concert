@@ -18,7 +18,9 @@
 package concert
 
 import (
-	"sync/atomic"
+	"sync"
+
+	"github.com/elastic/go-concert/atomic"
 )
 
 // RefCount is an atomic reference counter. It can be used to track a shared
@@ -28,9 +30,14 @@ import (
 // The zero value of RefCount is already in a valid state, which can be
 // Released already.
 type RefCount struct {
-	Action func()
-	count  uint32
+	count  atomic.Uint32
 	noCopy noCopy
+
+	errMux sync.Mutex
+	err    error
+
+	Action   func(err error)
+	AddError func(old, new error) error
 }
 
 // refCountFree indicates when a RefCount.Release shall return true.  It's
@@ -41,8 +48,7 @@ const refCountOops uint32 = refCountFree - 1
 
 // Retain increases the ref count.
 func (c *RefCount) Retain() {
-	x := atomic.AddUint32(&c.count, 1)
-	if x == 0 {
+	if c.count.Inc() == 0 {
 		panic("retaining released ref count")
 	}
 }
@@ -53,16 +59,44 @@ func (c *RefCount) Retain() {
 // If an Action is configured, then this action will be run once the
 // refcount becomes free.
 func (c *RefCount) Release() bool {
-	x := atomic.AddUint32(&c.count, ^uint32(0))
-	switch {
-	case x == refCountFree:
+	switch c.count.Dec() {
+	case refCountFree:
 		if c.Action != nil {
-			c.Action()
+			c.Action(c.err)
 		}
 		return true
-	case x == refCountOops:
+	case refCountOops:
 		panic("ref count released too often")
 	default:
 		return false
 	}
+}
+
+// Err returns the current error stored by the reference counter.
+func (c *RefCount) Err() error {
+	c.errMux.Lock()
+	defer c.errMux.Unlock()
+	return c.err
+}
+
+// Fail adds an error to the reference counter.
+// AddError will be called if configured, so to compute the actual error.
+// If AddError is not configured, the first error reported will be stored by
+// the reference counter only.
+//
+// Fail releases the reference counter.
+func (c *RefCount) Fail(err error) {
+	// use dummy function to adapt the error, ensuring errMux.Unlock will be
+	// executed before the call to Release or in case AddError panics.
+	func() {
+		c.errMux.Lock()
+		defer c.errMux.Unlock()
+		if c.AddError != nil {
+			c.err = c.AddError(c.err, err)
+		} else if c.err == nil {
+			c.err = err
+		}
+	}()
+
+	c.Release()
 }

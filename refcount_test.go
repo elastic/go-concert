@@ -18,23 +18,31 @@
 package concert_test
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/elastic/go-concert"
 )
 
 func TestRefCount(t *testing.T) {
-	r := concert.RefCount{
-		Action: func() { fmt.Println("done") },
-	}
+	t.Run("create and release", func(t *testing.T) {
+		var released bool
+		var r concert.RefCount
+		if r.Release() {
+			released = true
+		}
 
-	r.Release()
-}
+		assert.True(t, released)
+	})
 
-func TestRefCount1(t *testing.T) {
-	var r concert.RefCount
-	if r.Release() {
-		fmt.Println("done1")
-	}
+	t.Run("release with action", func(t *testing.T) {
+		var released bool
+		r := concert.RefCount{
+			Action: func(err error) { released = true },
+		}
+
+		r.Release()
+		assert.True(t, released)
+	})
 }
