@@ -30,8 +30,7 @@ import (
 // The zero value of RefCount is already in a valid state, which can be
 // Released already.
 type RefCount struct {
-	count  atomic.Uint32
-	noCopy noCopy
+	count atomic.Uint32
 
 	errMux sync.Mutex
 	err    error
