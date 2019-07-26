@@ -36,8 +36,8 @@ type RefCount struct {
 	errMux sync.Mutex
 	err    error
 
-	Action   func(err error)
-	AddError func(old, new error) error
+	Action  func(err error)
+	OnError func(old, new error) error
 }
 
 // refCountFree indicates when a RefCount.Release shall return true.  It's
@@ -80,23 +80,23 @@ func (c *RefCount) Err() error {
 }
 
 // Fail adds an error to the reference counter.
-// AddError will be called if configured, so to compute the actual error.
-// If AddError is not configured, the first error reported will be stored by
+// OnError will be called if configured, so to compute the actual error.
+// If OnError is not configured, the first error reported will be stored by
 // the reference counter only.
 //
 // Fail releases the reference counter.
-func (c *RefCount) Fail(err error) {
-	// use dummy function to adapt the error, ensuring errMux.Unlock will be
-	// executed before the call to Release or in case AddError panics.
+func (c *RefCount) Fail(err error) bool {
+	// use dummy function to handle the error, ensuring errMux.Unlock will be
+	// executed before the call to Release or in case OnError panics.
 	func() {
 		c.errMux.Lock()
 		defer c.errMux.Unlock()
-		if c.AddError != nil {
-			c.err = c.AddError(c.err, err)
+		if c.OnError != nil {
+			c.err = c.OnError(c.err, err)
 		} else if c.err == nil {
 			c.err = err
 		}
 	}()
 
-	c.Release()
+	return c.Release()
 }

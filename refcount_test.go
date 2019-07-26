@@ -18,6 +18,8 @@
 package concert_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,7 +44,62 @@ func TestRefCount(t *testing.T) {
 			Action: func(err error) { released = true },
 		}
 
-		r.Release()
+		assert.True(t, r.Release())
 		assert.True(t, released)
+	})
+
+	t.Run("releasing too often panics", func(t *testing.T) {
+		assert.Panics(t, func() {
+			var r concert.RefCount
+			r.Release()
+			r.Release()
+		})
+	})
+
+	t.Run("retain on released refcount panics", func(t *testing.T) {
+		assert.Panics(t, func() {
+			var r concert.RefCount
+			r.Release()
+			r.Retain()
+		})
+	})
+
+	t.Run("fail passes error releases the refcount", func(t *testing.T) {
+		var released bool
+		errTest := errors.New("test")
+		r := concert.RefCount{
+			Action: func(err error) {
+				assert.Equal(t, errTest, err)
+				released = true
+			},
+		}
+
+		assert.True(t, r.Fail(errTest))
+		assert.Equal(t, errTest, r.Err())
+		assert.True(t, released)
+	})
+
+	t.Run("fail stores first error only by default", func(t *testing.T) {
+		errTest := errors.New("test")
+		var r concert.RefCount
+		r.Retain()
+		assert.False(t, r.Fail(errTest))
+		assert.True(t, r.Fail(errors.New("other")))
+		assert.Equal(t, errTest, r.Err())
+	})
+
+	t.Run("OnError callback properly manipluates error", func(t *testing.T) {
+		r := concert.RefCount{
+			OnError: func(old, new error) error {
+				if old == nil {
+					return new
+				}
+				return fmt.Errorf("%s: %s", new, old)
+			},
+		}
+		r.Retain()
+		assert.False(t, r.Fail(errors.New("error1")))
+		assert.True(t, r.Fail(errors.New("error2")))
+		assert.Equal(t, "error2: error1", r.Err().Error())
 	})
 }
