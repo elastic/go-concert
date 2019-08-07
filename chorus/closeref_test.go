@@ -1,4 +1,4 @@
-package concert
+package chorus
 
 import (
 	"testing"
