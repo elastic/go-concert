@@ -20,6 +20,7 @@ package chorus
 import (
 	"errors"
 	"sync"
+	"time"
 )
 
 // CloserFunc is the function called by the Closer on `Close()`.
@@ -33,13 +34,15 @@ var ErrClosed = errors.New("closer is closed")
 type CloseRef interface {
 	Done() <-chan struct{}
 	Err() error
+	Deadline() (time.Time, bool)
+	Value(key interface{}) interface{}
 }
 
 // Closer implements a shutdown strategy when dealing with multiples go-routines, it creates a tree
 // of Closer, when you call `Close()` on a parent the `Close()` method will be called on the current
 // closer and any of the childs it may have and will remove the current node from the parent.
 //
-// NOTE: The `Close()` is reentrant but will propage the close only once.
+// NOTE: The `Close()` is reentrant but will propagate the close only once.
 type Closer struct {
 	mu       sync.Mutex
 	done     chan struct{}
@@ -47,6 +50,7 @@ type Closer struct {
 	parent   *Closer
 	children map[*Closer]struct{}
 	callback CloserFunc
+	deadline time.Time
 }
 
 // Close closes the closes and propagates the close to any child, on close the close callback will
@@ -92,6 +96,17 @@ func (c *Closer) Err() error {
 	err := c.err
 	c.mu.Unlock()
 	return err
+}
+
+// Deadline implements the Deadline() method of the context.Context interface but will always return
+// false.
+func (c *Closer) Deadline() (time.Time, bool) {
+	return c.deadline, false
+}
+
+// Value implements the Value() method of the contxt.Context interface
+func (c *Closer) Value(key interface{}) interface{} {
+	return nil
 }
 
 func (c *Closer) removeChild(child *Closer) {
