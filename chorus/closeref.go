@@ -50,7 +50,6 @@ type Closer struct {
 	parent   *Closer
 	children map[*Closer]struct{}
 	callback CloserFunc
-	deadline time.Time
 }
 
 // Close closes the closes and propagates the close to any child, on close the close callback will
@@ -101,7 +100,7 @@ func (c *Closer) Err() error {
 // Deadline implements the Deadline() method of the context.Context interface but will always return
 // false.
 func (c *Closer) Deadline() (time.Time, bool) {
-	return c.deadline, false
+	return time.Time{}, false
 }
 
 // Value implements the Value() method of the contxt.Context interface
