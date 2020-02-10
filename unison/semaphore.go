@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package concert
+package unison
 
 import (
 	"sync"
@@ -34,31 +34,6 @@ func NewSemaphore(n int) *Semaphore {
 
 func (s *Semaphore) Acquire() {
 	s.AcquireContext(nil)
-}
-
-func (s *Semaphore) AcquireContext(context doneContext) error {
-	s.mu.Lock()
-	s.n--
-	if s.n > 0 {
-		s.mu.Unlock()
-		return nil
-	}
-
-	// need to wait. Create waiter before unlock, so to ensure the wait is
-	// already in the list before the semaphore can send a signal.
-	waiter := s.waiters.Enqueue(false, nil)
-	s.mu.Unlock()
-
-	if context == nil {
-		waiter.Wait()
-		return nil
-	}
-
-	err := waiter.WaitContext(context)
-	if err != nil {
-		s.abort(waiter)
-	}
-	return err
 }
 
 func (s *Semaphore) AcquireTimeout(dur time.Duration) bool {
@@ -87,6 +62,31 @@ func (s *Semaphore) AcquireTimeout(dur time.Duration) bool {
 		s.abort(waiter)
 	}
 	return ok
+}
+
+func (s *Semaphore) AcquireContext(context doneContext) error {
+	s.mu.Lock()
+	s.n--
+	if s.n > 0 {
+		s.mu.Unlock()
+		return nil
+	}
+
+	// need to wait. Create waiter before unlock, so to ensure the wait is
+	// already in the list before the semaphore can send a signal.
+	waiter := s.waiters.Enqueue(false, nil)
+	s.mu.Unlock()
+
+	if context == nil {
+		waiter.Wait()
+		return nil
+	}
+
+	err := waiter.WaitContext(context)
+	if err != nil {
+		s.abort(waiter)
+	}
+	return err
 }
 
 func (s *Semaphore) TryAcquire() bool {

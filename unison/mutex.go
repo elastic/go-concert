@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package concert
+package unison
 
 import "time"
 
@@ -39,8 +39,12 @@ func (c Mutex) Lock() {
 }
 
 func (c Mutex) LockTimeout(duration time.Duration) bool {
-	if duration <= 0 {
+	switch {
+	case duration == 0:
 		return c.TryLock()
+	case duration < 0:
+		c.Lock()
+		return true
 	}
 
 	timer := time.NewTimer(duration)
