@@ -19,7 +19,7 @@ package concert
 
 import "time"
 
-type CHMutex struct {
+type Mutex struct {
 	ch chan struct{}
 }
 
@@ -28,17 +28,21 @@ type doneContext interface {
 	Err() error
 }
 
-func MakeCHMutex() CHMutex {
+func MakeMutex() Mutex {
 	ch := make(chan struct{}, 1)
 	ch <- struct{}{}
-	return CHMutex{ch: ch}
+	return Mutex{ch: ch}
 }
 
-func (c CHMutex) Lock() {
+func (c Mutex) Lock() {
 	<-c.ch
 }
 
-func (c CHMutex) LockTimeout(duration time.Duration) bool {
+func (c Mutex) LockTimeout(duration time.Duration) bool {
+	if duration <= 0 {
+		return c.TryLock()
+	}
+
 	timer := time.NewTimer(duration)
 	select {
 	case <-c.ch:
@@ -54,7 +58,7 @@ func (c CHMutex) LockTimeout(duration time.Duration) bool {
 	}
 }
 
-func (c CHMutex) LockContext(context doneContext) error {
+func (c Mutex) LockContext(context doneContext) error {
 	select {
 	case <-c.ch:
 		return nil
@@ -63,10 +67,19 @@ func (c CHMutex) LockContext(context doneContext) error {
 	}
 }
 
-func (c CHMutex) Await() <-chan struct{} {
+func (c Mutex) TryLock() bool {
+	select {
+	case <-c.ch:
+		return true
+	default:
+		return false
+	}
+}
+
+func (c Mutex) Await() <-chan struct{} {
 	return c.ch
 }
 
-func (c CHMutex) Unlock() {
+func (c Mutex) Unlock() {
 	c.ch <- struct{}{}
 }
