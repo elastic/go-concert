@@ -55,11 +55,23 @@ type ManagedLock struct {
 	entry   *lockEntry
 }
 
+// LockOption is used to pass additonal settings to all LockX methods of the ManagedLock.
+type LockOption interface {
+	apply(l *ManagedLock)
+}
+
 // LockSession provides signal with the current lock state. Lock sessions must
 // not be reused, as each Lock operation returns a new Session object.
 type LockSession struct {
 	isLocked             atomic.Bool
-	done, unlocked, lost *sigChannel
+	done, unlocked, lost *signaler
+}
+
+// WithSignalCallbacks is a LockOption that configures additional callbacks to be executed on lock session state changes.
+type WithSignalCallbacks struct {
+	Done     func()
+	Unlocked func()
+	Lost     func()
 }
 
 // lockEntry is the shared lock instances that all ManagedLocks refer too.
@@ -80,11 +92,12 @@ type lockEntry struct {
 	ref concert.RefCount
 }
 
-// sigChannel ensures that a channel close signal is executed only once, in
+// signaler ensures that a channel close signal is executed only once, in
 // case 2 go-routines race to generate the same signal.
-type sigChannel struct {
+type signaler struct {
 	once sync.Once
 	ch   chan struct{}
+	fn   func()
 }
 
 // GC Finalier for the ManagedLock. This variable is used for testing.
@@ -211,12 +224,12 @@ func (ml *ManagedLock) Key() string {
 //
 // Note: After loosing a lock, the ManagedLock must still call 'Unlock' in
 //       order to be reusable.
-func (ml *ManagedLock) Lock() *LockSession {
+func (ml *ManagedLock) Lock(opts ...LockOption) *LockSession {
 	checkNoActiveLockSession(ml.session)
 
 	ml.link(true)
 	ml.entry.Lock()
-	return ml.markLocked()
+	return ml.markLocked(opts)
 }
 
 // TryLock attempts to acquire the lock. If the lock is already held by another
@@ -224,7 +237,7 @@ func (ml *ManagedLock) Lock() *LockSession {
 //
 // On success a LockSession will be returned as well. The Lock session is valid
 // until Unlock has been called.
-func (ml *ManagedLock) TryLock() (*LockSession, bool) {
+func (ml *ManagedLock) TryLock(opts ...LockOption) (*LockSession, bool) {
 	checkNoActiveLockSession(ml.session)
 
 	ml.link(true)
@@ -233,7 +246,7 @@ func (ml *ManagedLock) TryLock() (*LockSession, bool) {
 		return nil, false
 	}
 
-	return ml.markLocked(), true
+	return ml.markLocked(opts), true
 }
 
 // LockTimeout will try to acquire lock. A failed lock attempt
@@ -244,7 +257,7 @@ func (ml *ManagedLock) TryLock() (*LockSession, bool) {
 //
 // On success a LockSession will be returned as well. The Lock session is valid
 // until Unlock has been called.
-func (ml *ManagedLock) LockTimeout(duration time.Duration) (*LockSession, bool) {
+func (ml *ManagedLock) LockTimeout(duration time.Duration, opts ...LockOption) (*LockSession, bool) {
 	checkNoActiveLockSession(ml.session)
 
 	ml.link(true)
@@ -252,7 +265,7 @@ func (ml *ManagedLock) LockTimeout(duration time.Duration) (*LockSession, bool) 
 		ml.unlink()
 		return nil, false
 	}
-	return ml.markLocked(), ml.IsLocked()
+	return ml.markLocked(opts), ml.IsLocked()
 }
 
 // LockContext tries to acquire the lock. The Log operation can be cancelled by
@@ -261,7 +274,7 @@ func (ml *ManagedLock) LockTimeout(duration time.Duration) (*LockSession, bool) 
 //
 // On success a LockSession will be returned as well. The Lock session is valid
 // until Unlock has been called.
-func (ml *ManagedLock) LockContext(context doneContext) (*LockSession, error) {
+func (ml *ManagedLock) LockContext(context doneContext, opts ...LockOption) (*LockSession, error) {
 	checkNoActiveLockSession(ml.session)
 
 	ml.link(true)
@@ -271,7 +284,7 @@ func (ml *ManagedLock) LockContext(context doneContext) (*LockSession, error) {
 		return nil, err
 	}
 
-	return ml.markLocked(), nil
+	return ml.markLocked(opts), nil
 }
 
 // Unlock releases a resource.
@@ -331,9 +344,13 @@ func (ml *ManagedLock) unlink() {
 	ml.manager.releaseEntry(entry)
 }
 
-func (ml *ManagedLock) markLocked() *LockSession {
+func (ml *ManagedLock) markLocked(opts []LockOption) *LockSession {
 	session := newLockSession()
 	ml.session = session
+
+	for i := range opts {
+		opts[i].apply(ml)
+	}
 
 	ml.entry.muInternal.Lock()
 	ml.entry.session = session
@@ -376,24 +393,49 @@ func (s *LockSession) LockLost() <-chan struct{} { return s.lost.Sig() }
 
 func (s *LockSession) unlock()      { s.doUnlock(s.unlocked) }
 func (s *LockSession) forceUnlock() { s.doUnlock(s.lost) }
-func (s *LockSession) doUnlock(kind *sigChannel) {
+func (s *LockSession) doUnlock(kind *signaler) {
 	s.isLocked.Store(false)
 	kind.Close()
 	s.done.Close()
 }
 
-func newSigChannel() *sigChannel {
-	return &sigChannel{ch: make(chan struct{})}
+func newSigChannel() *signaler {
+	return &signaler{ch: make(chan struct{})}
 }
 
-func (s *sigChannel) Sig() <-chan struct{} {
+func (s *signaler) Sig() <-chan struct{} {
 	return s.ch
 }
 
-func (s *sigChannel) Close() {
+func (s *signaler) Add(fn func()) {
+	if fn == nil {
+		return
+	}
+
+	old := s.fn
+	if old == nil {
+		s.fn = fn
+	} else {
+		s.fn = func() {
+			old()
+			fn()
+		}
+	}
+}
+
+func (s *signaler) Close() {
 	s.once.Do(func() {
 		close(s.ch)
+		if s.fn != nil {
+			s.fn()
+		}
 	})
+}
+
+func (opt WithSignalCallbacks) apply(lock *ManagedLock) {
+	lock.session.done.Add(opt.Done)
+	lock.session.unlocked.Add(opt.Unlocked)
+	lock.session.lost.Add(opt.Lost)
 }
 
 func checkNoActiveLockSession(s *LockSession) {

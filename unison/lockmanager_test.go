@@ -219,13 +219,22 @@ func TestLockManager(t *testing.T) {
 		t.Run("panics if we attempt to lock right away", func(t *testing.T) {
 			lm := NewLockManager()
 			l := lm.Access("key")
-			session := l.Lock()
+			var sigDone, sigLost, sigUnlocked int
+			session := l.Lock(WithSignalCallbacks{
+				Done:     func() { sigDone++ },
+				Lost:     func() { sigLost++ },
+				Unlocked: func() { sigUnlocked++ },
+			})
 			lm.ForceUnlock("key")
 
 			<-session.LockLost() // wait for signal before trying to lock again
 			expectPanic(t, func() {
 				l.Lock()
 			})
+
+			assert.Equal(t, 1, sigDone)
+			assert.Equal(t, 1, sigLost)
+			assert.Equal(t, 0, sigUnlocked)
 		})
 
 		t.Run("unlock does succeed", func(t *testing.T) {
@@ -271,7 +280,11 @@ func TestLockManager(t *testing.T) {
 		t.Run("lock session reports done on unlock", func(t *testing.T) {
 			lm := NewLockManager()
 			lock := lm.Access("key")
-			session := lock.Lock()
+			var sigDone, sigUnlocked int
+			session := lock.Lock(WithSignalCallbacks{
+				Done:     func() { sigDone++ },
+				Unlocked: func() { sigUnlocked++ },
+			})
 
 			var wg sync.WaitGroup
 			wg.Add(1)
@@ -279,6 +292,9 @@ func TestLockManager(t *testing.T) {
 
 			lock.Unlock()
 			wg.Wait() // <- deadlock if signal is not send to session
+
+			assert.Equal(t, 1, sigDone)
+			assert.Equal(t, 1, sigUnlocked)
 		})
 
 		t.Run("lock session reports 'unlocked'", func(t *testing.T) {
