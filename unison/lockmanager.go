@@ -103,6 +103,12 @@ type signaler struct {
 // GC Finalier for the ManagedLock. This variable is used for testing.
 var managedLockFinalizer = (*ManagedLock).finalize
 
+var closedChan = func() <-chan struct{} {
+	c := make(chan struct{})
+	close(c)
+	return c
+}()
+
 // NewLockManager creates a new LockManager instance.
 func NewLockManager() *LockManager {
 	m := &LockManager{}
@@ -378,18 +384,33 @@ func newLockSession() *LockSession {
 
 // Done returns a channel to wait for a final signal. The signal will become available
 // if the session has been finished due to an Unlock or Forced Unlock.
-func (s *LockSession) Done() <-chan struct{} { return s.done.Sig() }
+func (s *LockSession) Done() <-chan struct{} {
+	if s == nil {
+		return closedChan
+	}
+	return s.done.Sig()
+}
 
 // Unlocked returns a channel, that will signal that the ManagedLock was
 // unlocked.  A ManagedLock can still be unlocked (which will trigger the
 // signal), even after loosing the actual Lock.
-func (s *LockSession) Unlocked() <-chan struct{} { return s.unlocked.Sig() }
+func (s *LockSession) Unlocked() <-chan struct{} {
+	if s == nil {
+		return closedChan
+	}
+	return s.unlocked.Sig()
+}
 
 // LockLost return a channel, that will signal that the ManagedLock has lost
 // its lock status.  When receiving this signal, ongoing operations should be
 // cancelled, or results should be ignored, as other MangedLocks might be able
 // to acquire the lock the moment the current session has lost the lock.
-func (s *LockSession) LockLost() <-chan struct{} { return s.lost.Sig() }
+func (s *LockSession) LockLost() <-chan struct{} {
+	if s == nil {
+		return closedChan
+	}
+	return s.lost.Sig()
+}
 
 func (s *LockSession) unlock()      { s.doUnlock(s.unlocked) }
 func (s *LockSession) forceUnlock() { s.doUnlock(s.lost) }
