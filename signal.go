@@ -18,7 +18,7 @@
 package concert
 
 import (
-	"errors"
+	"context"
 	"sync"
 )
 
@@ -36,7 +36,7 @@ type OnceSignaler struct {
 	fn   func()
 }
 
-var Canceled = errors.New("cancelled")
+var Canceled = context.Canceled
 
 var closedChan = func() <-chan struct{} {
 	ch := make(chan struct{})
