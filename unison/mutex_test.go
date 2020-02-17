@@ -102,6 +102,13 @@ func testLockedFails(t *testing.T, create func() Mutex) {
 		go cancel()
 		assert.Equal(t, context.Canceled, m.LockContext(ctx))
 	})
+
+	t.Run("lock with already cancalled context", func(t *testing.T) {
+		m := create()
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		assert.Equal(t, context.Canceled, m.LockContext(ctx))
+	})
 }
 
 func testUnlockedFails(t *testing.T, create func() Mutex) {
