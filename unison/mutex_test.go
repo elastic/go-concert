@@ -74,9 +74,16 @@ func testInitializedMutex(t *testing.T) {
 
 	t.Run("lock unlocked with context succeeds", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		go cancel()
+		defer cancel()
 		m := MakeMutex()
 		assert.Equal(t, nil, m.LockContext(ctx))
+	})
+
+	t.Run("locking unlocked mutex with cancelled context fails", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		m := MakeMutex()
+		assert.Equal(t, context.Canceled, m.LockContext(ctx))
 	})
 }
 
