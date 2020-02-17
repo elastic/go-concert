@@ -91,6 +91,12 @@ func (c Mutex) LockTimeout(duration time.Duration) bool {
 // returned by context.Err, which MUST NOT return nil after cancellation.
 func (c Mutex) LockContext(context doneContext) error {
 	select {
+	case <-context.Done():
+		return context.Err()
+	default:
+	}
+
+	select {
 	case <-c.ch:
 		return nil
 	case <-context.Done():
