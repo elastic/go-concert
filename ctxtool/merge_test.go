@@ -70,7 +70,7 @@ func TestMergeCancellation(t *testing.T) {
 				wg.Wait() // <- deadlock if cancel signal was not distributed
 			})
 
-			t.Run("cancel if context 1 was cancalled", func(t *testing.T) {
+			t.Run("cancel if context 1 was canceled", func(t *testing.T) {
 				defer goleak.VerifyNone(t)
 				ctx1, cancelFn := context.WithCancel(context.Background())
 				ctx2 := context.Background()
@@ -81,7 +81,7 @@ func TestMergeCancellation(t *testing.T) {
 				assert.Error(t, ctx.Err())
 			})
 
-			t.Run("cancel if context 2 was cancalled", func(t *testing.T) {
+			t.Run("cancel if context 2 was canceled", func(t *testing.T) {
 				defer goleak.VerifyNone(t)
 				ctx1 := context.Background()
 				ctx2, cancelFn := context.WithCancel(context.Background())

@@ -36,15 +36,15 @@ type mergeValueCtx struct {
 	overwrites context.Context
 }
 
-// MergeContexts merges cancallation and values of 2 contexts.
-// The resulting context is cancelled by the first context that got cancalled.
+// MergeContexts merges cancellation and values of 2 contexts.
+// The resulting context is canceled by the first context that got canceled.
 // The ctx2 overwrites values in ctx1 during value lookup.
 func MergeContexts(ctx1, ctx2 context.Context) context.Context {
 	return MergeValues(MergeCancellation(ctx1, ctx2), ctx2)
 }
 
 // MergeCancellation creates a new context that will be cancelled if one of the
-// two input contexts gets cancalled. The `Values` method of the new context only
+// two input contexts gets canceled. The `Values` method of the new context only
 // uses values from `ctx`. With MergeValues, in order to merge values only.
 func MergeCancellation(ctx, other context.Context) context.Context {
 	err := ctx.Err()
