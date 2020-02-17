@@ -64,7 +64,7 @@ type LockOption interface {
 // not be reused, as each Lock operation returns a new Session object.
 type LockSession struct {
 	isLocked             atomic.Bool
-	done, unlocked, lost *signaler
+	done, unlocked, lost *concert.OnceSignaler
 }
 
 // WithSignalCallbacks is a LockOption that configures additional callbacks to be executed on lock session state changes.
@@ -92,22 +92,8 @@ type lockEntry struct {
 	ref concert.RefCount
 }
 
-// signaler ensures that a channel close signal is executed only once, in
-// case 2 go-routines race to generate the same signal.
-type signaler struct {
-	once sync.Once
-	ch   chan struct{}
-	fn   func()
-}
-
 // GC Finalier for the ManagedLock. This variable is used for testing.
 var managedLockFinalizer = (*ManagedLock).finalize
-
-var closedChan = func() <-chan struct{} {
-	c := make(chan struct{})
-	close(c)
-	return c
-}()
 
 // NewLockManager creates a new LockManager instance.
 func NewLockManager() *LockManager {
@@ -376,9 +362,9 @@ func (ml *ManagedLock) markUnlocked() {
 func newLockSession() *LockSession {
 	return &LockSession{
 		isLocked: atomic.MakeBool(true),
-		done:     newSigChannel(),
-		unlocked: newSigChannel(),
-		lost:     newSigChannel(),
+		done:     concert.NewOnceSignaler(),
+		unlocked: concert.NewOnceSignaler(),
+		lost:     concert.NewOnceSignaler(),
 	}
 }
 
@@ -386,9 +372,9 @@ func newLockSession() *LockSession {
 // if the session has been finished due to an Unlock or Forced Unlock.
 func (s *LockSession) Done() <-chan struct{} {
 	if s == nil {
-		return closedChan
+		return concert.ClosedChan()
 	}
-	return s.done.Sig()
+	return s.done.Done()
 }
 
 // Unlocked returns a channel, that will signal that the ManagedLock was
@@ -396,9 +382,9 @@ func (s *LockSession) Done() <-chan struct{} {
 // signal), even after loosing the actual Lock.
 func (s *LockSession) Unlocked() <-chan struct{} {
 	if s == nil {
-		return closedChan
+		return concert.ClosedChan()
 	}
-	return s.unlocked.Sig()
+	return s.unlocked.Done()
 }
 
 // LockLost return a channel, that will signal that the ManagedLock has lost
@@ -407,56 +393,23 @@ func (s *LockSession) Unlocked() <-chan struct{} {
 // to acquire the lock the moment the current session has lost the lock.
 func (s *LockSession) LockLost() <-chan struct{} {
 	if s == nil {
-		return closedChan
+		return concert.ClosedChan()
 	}
-	return s.lost.Sig()
+	return s.lost.Done()
 }
 
 func (s *LockSession) unlock()      { s.doUnlock(s.unlocked) }
 func (s *LockSession) forceUnlock() { s.doUnlock(s.lost) }
-func (s *LockSession) doUnlock(kind *signaler) {
+func (s *LockSession) doUnlock(kind *concert.OnceSignaler) {
 	s.isLocked.Store(false)
-	kind.Close()
-	s.done.Close()
-}
-
-func newSigChannel() *signaler {
-	return &signaler{ch: make(chan struct{})}
-}
-
-func (s *signaler) Sig() <-chan struct{} {
-	return s.ch
-}
-
-func (s *signaler) Add(fn func()) {
-	if fn == nil {
-		return
-	}
-
-	old := s.fn
-	if old == nil {
-		s.fn = fn
-	} else {
-		s.fn = func() {
-			old()
-			fn()
-		}
-	}
-}
-
-func (s *signaler) Close() {
-	s.once.Do(func() {
-		close(s.ch)
-		if s.fn != nil {
-			s.fn()
-		}
-	})
+	kind.Trigger()
+	s.done.Trigger()
 }
 
 func (opt WithSignalCallbacks) apply(lock *ManagedLock) {
-	lock.session.done.Add(opt.Done)
-	lock.session.unlocked.Add(opt.Unlocked)
-	lock.session.lost.Add(opt.Lost)
+	lock.session.done.OnSignal(opt.Done)
+	lock.session.unlocked.OnSignal(opt.Unlocked)
+	lock.session.lost.OnSignal(opt.Lost)
 }
 
 func checkNoActiveLockSession(s *LockSession) {
