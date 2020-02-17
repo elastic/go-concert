@@ -36,6 +36,7 @@ type OnceSignaler struct {
 	fn   func()
 }
 
+// Canceled is the error returned when the signaler has been triggered.
 var Canceled = context.Canceled
 
 var closedChan = func() <-chan struct{} {
