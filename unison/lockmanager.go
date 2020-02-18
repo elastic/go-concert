@@ -28,7 +28,7 @@ import (
 )
 
 // LockManager gives access to a set of Locks by name.  The lock manager can
-// forcefully unlock a lock. Routines using a manged lock can use the
+// forcefully unlock a lock. Routines using a managed lock can use the
 // LockSession to list for special Lock events.
 //
 // The zero value of LockManager is directly usable, but a LockManager must no
@@ -39,7 +39,7 @@ type LockManager struct {
 	table    map[string]*lockEntry
 }
 
-// ManagedLock is a mutex like structure that is maanged by the LockManager.
+// ManagedLock is a mutex like structure that is managed by the LockManager.
 // A managed lock can loose it's lock lease at any time. The LockX methods
 // return a LockSession that can be used to listen for the current Locks state
 // changes.
@@ -67,11 +67,20 @@ type LockSession struct {
 	done, unlocked, lost *concert.OnceSignaler
 }
 
-// WithSignalCallbacks is a LockOption that configures additional callbacks to be executed on lock session state changes.
+// WithSignalCallbacks is a LockOption that configures additional callbacks to
+// be executed on lock session state changes.
+// A LockSession is valid until the lock has been Unlocked. The callbacks are
+// registered with the lock session, and will not be called anymore once the LockSession is finalized.
 type WithSignalCallbacks struct {
-	Done     func()
+	// Done is executed after the Unlocked or Lost event has been emitted. Done will never be executed twice,
+	// even if both events get emitted.
+	Done func()
+
+	// Unlocked is called when the lock has been explicitely unlocked.
 	Unlocked func()
-	Lost     func()
+
+	// Lost is called when the Lock was force unlocked by the LockManager.
+	Lost func()
 }
 
 // lockEntry is the shared lock instances that all ManagedLocks refer too.
@@ -92,7 +101,7 @@ type lockEntry struct {
 	ref concert.RefCount
 }
 
-// GC Finalier for the ManagedLock. This variable is used for testing.
+// GC Finalizer for the ManagedLock. This variable is used for testing.
 var managedLockFinalizer = (*ManagedLock).finalize
 
 // NewLockManager creates a new LockManager instance.
@@ -348,7 +357,7 @@ func (ml *ManagedLock) markLocked(opts []LockOption) *LockSession {
 	ml.entry.session = session
 	ml.entry.muInternal.Unlock()
 
-	// in case we miss an unlock operation (programmer error or panic that hash
+	// in case we miss an unlock operation (programmer error or panic that has
 	// been caught) we set a finalizer to eventually free the resource.
 	// The Unlock operation will unsert the finalizer.
 	runtime.SetFinalizer(ml, managedLockFinalizer)

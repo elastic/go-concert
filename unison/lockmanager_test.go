@@ -42,7 +42,7 @@ func TestLockManager(t *testing.T) {
 			require.Equal(t, 1, len(lm.table), "expected shared entry to be generated when locking")
 
 			lock.Unlock()
-			require.Equal(t, 0, len(lm.table), "expected sharede entry to be freed after unlock")
+			require.Equal(t, 0, len(lm.table), "expected shared entry to be freed after unlock")
 		})
 
 		t.Run("garbage collecting a ManagedLock frees shared entries in the LockManager", func(t *testing.T) {
@@ -57,7 +57,7 @@ func TestLockManager(t *testing.T) {
 			for i := 0; i < 10; i++ {
 				runtime.GC()
 			}
-			require.Equal(t, 0, len(lm.table), "expected sharede entry to be freed after unlock")
+			require.Equal(t, 0, len(lm.table), "expected shared entry to be freed after unlock")
 		})
 	})
 
