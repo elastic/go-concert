@@ -17,27 +17,23 @@
 
 package ctxtool
 
-import (
-	"context"
-)
+import "time"
 
-type chanCanceller <-chan struct{}
-
-// WithChannel creates a context that is cancelled if the parent context is cancelled
-// or if the given channel is closed.
-func WithChannel(parent context.Context, ch <-chan struct{}) (context.Context, context.CancelFunc) {
-	return MergeCancellation(parent, chanCanceller(ch))
+type deadliner interface {
+	Deadline() (time.Time, bool)
 }
 
-func (c chanCanceller) Done() <-chan struct{} {
-	return (<-chan struct{})(c)
+type canceller interface {
+	Done() <-chan struct{}
+	Err() error
 }
 
-func (c chanCanceller) Err() error {
-	select {
-	case <-c:
-		return context.Canceled
-	default:
-		return nil
-	}
+type valuer interface {
+	Value(interface{}) interface{}
 }
+
+var closedChan = func() chan struct{} {
+	ch := make(chan struct{})
+	close(ch)
+	return ch
+}()

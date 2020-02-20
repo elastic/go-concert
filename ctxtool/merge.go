@@ -23,67 +23,79 @@ import (
 	"time"
 )
 
+type cancelledContext struct {
+	context.Context
+	err error
+}
+
 type mergeCancelCtx struct {
-	ctx1, ctx2 context.Context
-	ch         <-chan struct{}
+	context.Context
+	cancel canceller
+	ch     <-chan struct{}
 
 	mu  sync.Mutex
 	err error
 }
 
+type mergedDeadlineCtx struct {
+	context.Context
+	deadline time.Time
+}
+
 type mergeValueCtx struct {
 	context.Context
-	overwrites context.Context
+	overwrites valuer
 }
 
 // MergeContexts merges cancellation and values of 2 contexts.
 // The resulting context is canceled by the first context that got canceled.
 // The ctx2 overwrites values in ctx1 during value lookup.
-func MergeContexts(ctx1, ctx2 context.Context) context.Context {
-	return MergeValues(MergeCancellation(ctx1, ctx2), ctx2)
+func MergeContexts(ctx1, ctx2 context.Context) (context.Context, context.CancelFunc) {
+	return MergeCancellation(MergeValues(MergeDeadline(ctx1, ctx2), ctx2), ctx2)
 }
 
 // MergeCancellation creates a new context that will be cancelled if one of the
-// two input contexts gets canceled. The `Values` method of the new context only
-// uses values from `ctx`. With MergeValues, in order to merge values only.
-func MergeCancellation(ctx, other context.Context) context.Context {
+// two input contexts gets canceled. The `Values` and `Deadline` are taken from the first context.
+func MergeCancellation(ctx context.Context, other canceller) (context.Context, context.CancelFunc) {
 	err := ctx.Err()
 	if err == nil {
 		err = other.Err()
 	}
 	if err != nil {
 		// at least one context is already cancelled
-		return &mergeCancelCtx{
-			ctx1: ctx,
-			ctx2: other,
-			ch:   closedChan,
-			err:  err,
-		}
+		return &cancelledContext{Context: ctx, err: err}, func() {}
 	}
 
 	if ctx.Done() == nil && other.Done() == nil {
 		// context is never cancelled.
-		return &mergeCancelCtx{
-			ctx1: ctx,
-			ctx2: other,
-		}
+		return ctx, func() {}
 	}
 
 	chDone := make(chan struct{})
 	merged := &mergeCancelCtx{
-		ctx1: ctx,
-		ctx2: other,
-		ch:   chDone,
+		Context: ctx,
+		cancel:  other,
+		ch:      chDone,
 	}
 	go merged.waitCancel(chDone)
-	return merged
+
+	canceller := func() {
+		merged.mu.Lock()
+		defer merged.mu.Unlock()
+		if merged.err == nil {
+			merged.err = context.Canceled
+			close(chDone)
+		}
+	}
+	return merged, canceller
 }
 
-// MergeValues merges the values from ctx and overwrites. Value lookup will occur on `overwrites` first.
-// Deadline and cancellation are still driven by the first context. In order to merge cancellation use
-// MergeCancellation.
-func MergeValues(ctx, overwrites context.Context) context.Context {
-	return &mergeValueCtx{ctx, overwrites}
+func (c *cancelledContext) Done() <-chan struct{} {
+	return closedChan
+}
+
+func (c *cancelledContext) Err() error {
+	return c.err
 }
 
 func (c *mergeCancelCtx) waitCancel(chDone chan struct{}) {
@@ -91,31 +103,20 @@ func (c *mergeCancelCtx) waitCancel(chDone chan struct{}) {
 	defer func() {
 		c.mu.Lock()
 		defer c.mu.Unlock()
-		c.err = err
-		close(chDone)
+		if c.err == nil {
+			c.err = err
+			close(chDone)
+		}
 	}()
 
 	select {
-	case <-c.ctx1.Done():
-		err = c.ctx1.Err()
-	case <-c.ctx2.Done():
-		err = c.ctx2.Err()
-	}
-}
+	case <-chDone: // CancelFunc triggered cleanup
 
-func (c *mergeCancelCtx) Deadline() (deadline time.Time, ok bool) {
-	d1, ok1 := c.ctx1.Deadline()
-	d2, ok2 := c.ctx2.Deadline()
-	if !ok1 {
-		return d2, ok2
-	} else if !ok2 {
-		return d1, ok1
+	case <-c.Context.Done():
+		err = c.Context.Err()
+	case <-c.cancel.Done():
+		err = c.cancel.Err()
 	}
-
-	if d1.Before(d2) {
-		return d1, true
-	}
-	return d2, true
 }
 
 func (c *mergeCancelCtx) Done() <-chan struct{} {
@@ -128,8 +129,11 @@ func (c *mergeCancelCtx) Err() error {
 	return c.err
 }
 
-func (c *mergeCancelCtx) Value(key interface{}) interface{} {
-	return c.ctx1.Value(key)
+// MergeValues merges the values from ctx and overwrites. Value lookup will occur on `overwrites` first.
+// Deadline and cancellation are still driven by the first context. In order to merge cancellation use
+// MergeCancellation.
+func MergeValues(ctx context.Context, overwrites valuer) context.Context {
+	return &mergeValueCtx{ctx, overwrites}
 }
 
 func (c *mergeValueCtx) Value(key interface{}) interface{} {
@@ -137,4 +141,25 @@ func (c *mergeValueCtx) Value(key interface{}) interface{} {
 		return val
 	}
 	return c.Context.Value(key)
+}
+
+// MergeDeadline merges the deadline of two contexts. The resulting context
+// deadline will be the lesser deadline between the two context.  If neither
+// context configures a deadline, the original context is returned.
+func MergeDeadline(ctx context.Context, deadliner deadliner) context.Context {
+	deadline, ok := deadliner.Deadline()
+	if !ok {
+		return ctx
+	}
+
+	ctxDeadline, ok := ctx.Deadline()
+	if ok && ctxDeadline.Before(deadline) {
+		return ctx
+	}
+
+	return &mergedDeadlineCtx{ctx, deadline}
+}
+
+func (ctx mergedDeadlineCtx) Deadline() (time.Time, bool) {
+	return ctx.deadline, true
 }

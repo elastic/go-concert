@@ -30,7 +30,8 @@ func TestWithChannel(t *testing.T) {
 		defer goleak.VerifyNone(t)
 
 		ch := make(chan struct{})
-		ctx := WithChannel(context.Background(), ch)
+		ctx, cancel := WithChannel(context.Background(), ch)
+		defer cancel()
 		assert.NoError(t, ctx.Err())
 		close(ch)
 		<-ctx.Done()
@@ -40,10 +41,14 @@ func TestWithChannel(t *testing.T) {
 	t.Run("cancel if parent context is cancelled", func(t *testing.T) {
 		defer goleak.VerifyNone(t)
 
+		var cancelFn, cancelFn2 context.CancelFunc
+
 		ctx, cancelFn := context.WithCancel(context.Background())
 		ch := make(chan struct{})
 		defer cancelFn()
-		ctx = WithChannel(ctx, ch)
+		ctx, cancelFn2 = WithChannel(ctx, ch)
+		defer cancelFn2()
+
 		cancelFn()
 		<-ctx.Done()
 		assert.Error(t, ctx.Err())
@@ -53,7 +58,10 @@ func TestWithChannel(t *testing.T) {
 		defer goleak.VerifyNone(t)
 		ch := make(chan struct{})
 		ctx := context.WithValue(context.Background(), "hello", "world")
-		ctx = WithChannel(ctx, ch)
+
+		var cancel context.CancelFunc
+		ctx, cancel = WithChannel(ctx, ch)
+		defer cancel()
 
 		defer func() {
 			close(ch)
