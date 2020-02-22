@@ -21,14 +21,15 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/goleak"
 )
 
 func TestMergeCancellation(t *testing.T) {
-	mergers := map[string]func(a, b context.Context) context.Context{
-		"MergeCancellation": MergeCancellation,
+	mergers := map[string]func(a, b context.Context) (context.Context, context.CancelFunc){
+		"MergeCancellation": func(a, b context.Context) (context.Context, context.CancelFunc) { return MergeCancellation(a, b) },
 		"MergeContexts":     MergeContexts,
 	}
 
@@ -44,7 +45,8 @@ func TestMergeCancellation(t *testing.T) {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					ctx := merger(ctx1, ctx2)
+					ctx, cancel := merger(ctx1, ctx2)
+					defer cancel()
 					<-ctx.Done()
 				}()
 
@@ -62,12 +64,24 @@ func TestMergeCancellation(t *testing.T) {
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
-					ctx := merger(ctx1, ctx2)
+					ctx, cancel := merger(ctx1, ctx2)
+					defer cancel()
 					<-ctx.Done()
 				}()
 
 				cancel2()
 				wg.Wait() // <- deadlock if cancel signal was not distributed
+			})
+
+			t.Run("canceller cancels new context", func(t *testing.T) {
+				ctx1, cancel1 := context.WithCancel(context.Background())
+				ctx2, cancel2 := context.WithCancel(context.Background())
+				defer cancel1()
+				defer cancel2()
+
+				ctx, cancel := merger(ctx1, ctx2)
+				cancel()
+				<-ctx.Done()
 			})
 
 			t.Run("cancel if context 1 was canceled", func(t *testing.T) {
@@ -76,7 +90,8 @@ func TestMergeCancellation(t *testing.T) {
 				ctx2 := context.Background()
 				cancelFn()
 
-				ctx := merger(ctx1, ctx2)
+				ctx, cancel := merger(ctx1, ctx2)
+				defer cancel()
 				<-ctx.Done()
 				assert.Error(t, ctx.Err())
 			})
@@ -87,7 +102,8 @@ func TestMergeCancellation(t *testing.T) {
 				ctx2, cancelFn := context.WithCancel(context.Background())
 				cancelFn()
 
-				ctx := merger(ctx1, ctx2)
+				ctx, cancel := merger(ctx1, ctx2)
+				defer cancel()
 				<-ctx.Done()
 				assert.Error(t, ctx.Err())
 			})
@@ -98,7 +114,8 @@ func TestMergeCancellation(t *testing.T) {
 				ctx2, cancelFn := context.WithCancel(context.Background())
 				cancelFn()
 
-				ctx := merger(ctx1, ctx2)
+				ctx, cancel := merger(ctx1, ctx2)
+				defer cancel()
 				assert.Equal(t, 1, ctx.Value("a"))
 			})
 		})
@@ -139,8 +156,12 @@ func TestMergeValues(t *testing.T) {
 	}
 
 	mergers := map[string]func(a, b context.Context) context.Context{
-		"MergeValues":   MergeValues,
-		"MergeContexts": MergeContexts,
+		"MergeValues": func(a, b context.Context) context.Context { return MergeValues(a, b) },
+		"MergeContexts": func(a, b context.Context) context.Context {
+			ctx, cancel := MergeContexts(a, b)
+			cancel()
+			return ctx
+		},
 	}
 
 	for name, merger := range mergers {
@@ -160,6 +181,78 @@ func TestMergeValues(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMergeDeadline(t *testing.T) {
+	ts1 := time.Now()
+	ts2 := ts1.Add(1 * time.Hour)
+
+	withDeadline := func(ts time.Time) context.Context {
+		ctx, cancel := context.WithDeadline(context.Background(), ts)
+		cancel()
+		return ctx
+	}
+
+	cases := map[string]struct {
+		ctx1 context.Context
+		ctx2 context.Context
+		want time.Time
+	}{
+		"no deadline": {
+			ctx1: context.Background(),
+			ctx2: context.Background(),
+		},
+		"first deadline": {
+			ctx1: withDeadline(ts1),
+			ctx2: withDeadline(ts2),
+			want: ts1,
+		},
+		"second deadline": {
+			ctx1: withDeadline(ts2),
+			ctx2: withDeadline(ts1),
+			want: ts1,
+		},
+		"first context only has deadline": {
+			ctx1: withDeadline(ts1),
+			ctx2: context.Background(),
+			want: ts1,
+		},
+		"second context only has deadline": {
+			ctx1: context.Background(),
+			ctx2: withDeadline(ts1),
+			want: ts1,
+		},
+	}
+
+	mergers := map[string]func(a, b context.Context) context.Context{
+		"MergeDeadline": func(a, b context.Context) context.Context { return MergeDeadline(a, b) },
+		"MergeContexts": func(a, b context.Context) context.Context {
+			ctx, cancel := MergeContexts(a, b)
+			cancel()
+			return ctx
+		},
+	}
+
+	for name, merger := range mergers {
+		t.Run(name, func(t *testing.T) {
+			for name, test := range cases {
+				t.Run(name, func(t *testing.T) {
+					defer goleak.VerifyNone(t)
+
+					ctx := merger(test.ctx1, test.ctx2)
+					deadline, ok := ctx.Deadline()
+
+					if test.want.IsZero() {
+						assert.False(t, ok)
+					} else {
+						assert.True(t, ok)
+						assert.Equal(t, test.want, deadline)
+					}
+				})
+			}
+		})
+	}
+
 }
 
 func contextWithValues(args ...interface{}) context.Context {
