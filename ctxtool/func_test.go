@@ -19,26 +19,95 @@ package ctxtool
 
 import (
 	"context"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 )
 
 func TestWithFunc(t *testing.T) {
-	t.Run("never executed on backgound context", func(t *testing.T) {
+	t.Run("executed on cleanup 'cancel' call", func(t *testing.T) {
+		defer goleak.VerifyNone(t)
+
 		count := 0
-		ctx := WithFunc(context.Background(), func() { count++ })
+		wg := makeWaitGroup((1)) // func is always run asynchronously, wait
+		ctx, cancel := WithFunc(context.Background(), func() {
+			defer wg.Done()
+			count++
+		})
+		cancel()
+		wg.Wait()
 		assert.NotNil(t, ctx)
-		assert.Equal(t, 0, count)
+		assert.Equal(t, 1, count)
 	})
 
 	t.Run("executed func on cancel", func(t *testing.T) {
+		defer goleak.VerifyNone(t)
+
+		var (
+			ctx              context.Context
+			cancel1, cancel2 context.CancelFunc
+		)
+
 		done := make(chan struct{})
 		count := 0
-		ctx, cancelFn := context.WithCancel(context.Background())
-		ctx = WithFunc(ctx, func() { close(done); count++ })
-		cancelFn()
+		ctx, cancel1 = context.WithCancel(context.Background())
+		ctx, cancel2 = WithFunc(ctx, func() { close(done); count++ })
+		defer cancel2()
+		cancel1()
 		<-done
 		assert.Equal(t, 1, count)
 	})
+
+	t.Run("wait for other before we continue cancelling", func(t *testing.T) {
+		ctx1, canceler := context.WithCancel(context.Background())
+		defer canceler()
+
+		var mu sync.Mutex
+		var values []int
+
+		wg := makeWaitGroup(2)
+		wg1 := makeWaitGroup(1)
+		go func() {
+			defer wg1.Done()
+			defer wg.Done()
+			<-ctx1.Done()
+
+			mu.Lock()
+			defer mu.Unlock()
+			values = append(values, 1)
+		}()
+
+		// create context that waits for wg1 to finish
+		ctx2, cancel2 := WithFunc(ctx1, wg1.Wait)
+		defer cancel2()
+		go func() {
+			defer wg.Done()
+			<-ctx2.Done()
+
+			mu.Lock()
+			defer mu.Unlock()
+			values = append(values, 2)
+		}()
+
+		// get the machinery run:
+		//   - start go-routine 1 and 2
+		//   - cancel top-level context
+		//   -> go-routine 1 will shutdown
+		//     - signal propagation in ctx2 is blocked until wg1.Wait unblocks
+		//   -> go-routine calls wg1.Done -> signal propagation continues
+		//   -> go-routine 2 will shutdown
+		//     - signal all helper go-routines are done
+
+		canceler()
+		wg.Wait()
+		assert.Equal(t, []int{1, 2}, values)
+	})
+}
+
+func makeWaitGroup(i int) *sync.WaitGroup {
+	var wg sync.WaitGroup
+	wg.Add(i)
+	return &wg
 }
