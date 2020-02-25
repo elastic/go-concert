@@ -8,7 +8,6 @@ os:
 go:
   - '1.12'
   - '1.13'
-  - 'tip'
 
 # Check we're testing the correct commit (Snippet from: https://github.com/travis-ci/travis-ci/issues/7459#issuecomment-287040521)
 before_install:
