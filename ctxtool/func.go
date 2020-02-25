@@ -17,16 +17,65 @@
 
 package ctxtool
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
-// WithFunc creates a context that will execute the given function when the parent context gets cancelled.
-func WithFunc(ctx context.Context, fn func()) context.Context {
-	if ch := ctx.Done(); ch != nil {
-		go func() {
-			<-ch
-			fn()
-		}()
+type funcContext struct {
+	context.Context
+	ch  <-chan struct{}
+	mu  sync.Mutex
+	err error
+}
+
+// WithFunc creates a context that will execute the given function when the
+// parent context gets cancelled.
+func WithFunc(ctx context.Context, fn func()) (context.Context, context.CancelFunc) {
+	if ctx.Err() != nil {
+		// context already cancelled, call fn
+		go fn()
+		return ctx, func() {}
 	}
 
-	return ctx
+	chCancel := make(chan struct{})
+	chDone := make(chan struct{})
+	fnCtx := &funcContext{
+		Context: ctx,
+		ch:      chDone,
+	}
+
+	go fnCtx.wait(chCancel, chDone, fn)
+
+	var closeOnce sync.Once
+	return fnCtx, func() {
+		closeOnce.Do(func() {
+			close(chCancel)
+		})
+	}
+}
+
+func (ctx *funcContext) wait(cancel <-chan struct{}, done chan struct{}, fn func()) {
+	defer close(done)
+	defer fn()
+
+	select {
+	case <-ctx.Context.Done():
+		ctx.setErr(ctx.Context.Err())
+	case <-cancel:
+		ctx.setErr(context.Canceled)
+	}
+}
+
+func (ctx *funcContext) setErr(err error) {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	ctx.err = err
+}
+
+func (ctx *funcContext) Done() <-chan struct{} { return ctx.ch }
+func (ctx *funcContext) Err() error {
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+	return ctx.err
 }
