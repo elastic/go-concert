@@ -58,11 +58,6 @@ func (c chanContext) Done() <-chan struct{} {
 	return c
 }
 
-// If Done is not yet closed, Err returns nil.
-// If Done is closed, Err returns a non-nil error explaining why:
-// Canceled if the context was canceled
-// or DeadlineExceeded if the context's deadline passed.
-// After Err returns a non-nil error, successive calls to Err return the same error.
 func (c chanContext) Err() error {
 	select {
 	case <-c:
