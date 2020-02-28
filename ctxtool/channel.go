@@ -19,14 +19,22 @@ package ctxtool
 
 import (
 	"context"
+	"time"
 )
 
 type chanCanceller <-chan struct{}
+
+type chanContext <-chan struct{}
 
 // WithChannel creates a context that is cancelled if the parent context is cancelled
 // or if the given channel is closed.
 func WithChannel(parent context.Context, ch <-chan struct{}) (context.Context, context.CancelFunc) {
 	return MergeCancellation(parent, chanCanceller(ch))
+}
+
+// FromChannel creates a new context from a channel.
+func FromChannel(ch <-chan struct{}) context.Context {
+	return chanContext(ch)
 }
 
 func (c chanCanceller) Done() <-chan struct{} {
@@ -40,4 +48,25 @@ func (c chanCanceller) Err() error {
 	default:
 		return nil
 	}
+}
+
+func (c chanContext) Deadline() (deadline time.Time, ok bool) {
+	return time.Time{}, false
+}
+
+func (c chanContext) Done() <-chan struct{} {
+	return c
+}
+
+func (c chanContext) Err() error {
+	select {
+	case <-c:
+		return context.Canceled
+	default:
+		return nil
+	}
+}
+
+func (c chanContext) Value(key interface{}) interface{} {
+	return nil
 }

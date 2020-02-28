@@ -1,6 +1,13 @@
 package ctxtool
 
-import "context"
+import (
+	"context"
+	"time"
+)
+
+type cancelContext struct {
+	canceller
+}
 
 // AutoCancel collects cancel functions to be executed at the end of the
 // function scope.
@@ -34,4 +41,18 @@ func (ac *AutoCancel) Add(fn context.CancelFunc) {
 func (ac *AutoCancel) With(ctx context.Context, cancel context.CancelFunc) context.Context {
 	ac.Add(cancel)
 	return ctx
+}
+
+// FromCanceller creates a new context from a canceller. If a contex is passed,
+// then Deadline and Value will be ignored.
+func FromCanceller(c canceller) context.Context {
+	return cancelContext{c}
+}
+
+func (c cancelContext) Deadline() (deadline time.Time, ok bool) {
+	return time.Time{}, false
+}
+
+func (c cancelContext) Value(key interface{}) interface{} {
+	return nil
 }
