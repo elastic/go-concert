@@ -37,6 +37,13 @@ type mergeCancelCtx struct {
 	err error
 }
 
+// cancelOverwriteContext uses the canceller for Done and error calls, and the
+// original context for Deadline and Value calls.
+type cancelOverwriteContext struct {
+	ctx    context.Context
+	cancel canceller
+}
+
 type mergedDeadlineCtx struct {
 	context.Context
 	deadline time.Time
@@ -66,9 +73,12 @@ func MergeCancellation(ctx context.Context, other canceller) (context.Context, c
 		return &cancelledContext{Context: ctx, err: err}, func() {}
 	}
 
-	if ctx.Done() == nil && other.Done() == nil {
-		// context is never cancelled.
-		return ctx, func() {}
+	if ctx.Done() == nil {
+		if other.Done() == nil {
+			// context is never cancelled.
+			return ctx, func() {}
+		}
+		return &cancelOverwriteContext{ctx: ctx, cancel: other}, func() {}
 	}
 
 	chDone := make(chan struct{})
@@ -127,6 +137,22 @@ func (c *mergeCancelCtx) Err() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.err
+}
+
+func (c *cancelOverwriteContext) Deadline() (deadline time.Time, ok bool) {
+	return c.ctx.Deadline()
+}
+
+func (c *cancelOverwriteContext) Done() <-chan struct{} {
+	return c.cancel.Done()
+}
+
+func (c *cancelOverwriteContext) Err() error {
+	return c.cancel.Err()
+}
+
+func (c *cancelOverwriteContext) Value(key interface{}) interface{} {
+	return c.ctx.Value(key)
 }
 
 // MergeValues merges the values from ctx and overwrites. Value lookup will occur on `overwrites` first.
