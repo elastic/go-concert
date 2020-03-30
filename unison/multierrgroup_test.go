@@ -13,7 +13,7 @@ func TestMultiErrGroup(t *testing.T) {
 		assert.Equal(t, 0, len(grp.Wait()))
 	})
 
-	t.Run("returns empty list of no routine failed", func(t *testing.T) {
+	t.Run("returns empty list if no go-routine failed", func(t *testing.T) {
 		var grp MultiErrGroup
 		grp.Go(func() error { return nil })
 		assert.Equal(t, 0, len(grp.Wait()))
