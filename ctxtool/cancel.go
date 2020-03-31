@@ -46,6 +46,9 @@ func (ac *AutoCancel) With(ctx context.Context, cancel context.CancelFunc) conte
 // FromCanceller creates a new context from a canceller. If a contex is passed,
 // then Deadline and Value will be ignored.
 func FromCanceller(c canceller) context.Context {
+	if ctx, ok := c.(context.Context); ok {
+		return ctx
+	}
 	return cancelContext{c}
 }
 
