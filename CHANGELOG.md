@@ -9,6 +9,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- FromCancel returns original context.Context, if input implements this type. Deadline and Value will not be ignored anymore. (#22)
+
 ### Deprecated
 
 ### Removed
