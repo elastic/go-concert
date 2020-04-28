@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 - Add MultiErrGroup (#20).
+- Add Group interface and TaskGroup implementation (#23).
+- Add SafeWaitGroup (#23).
 
 ### Changed
 
