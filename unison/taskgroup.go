@@ -40,6 +40,24 @@ type Canceler interface {
 	Err() error
 }
 
+type closedGroup struct {
+	err error
+}
+
+// ClosedGroup creates a Group that always fails to start a go-routine.
+// Go will return reportedError on each attempt to create a go routine.
+// If reportedError is nil, ErrGroupClosed will be used.
+func ClosedGroup(reportedError error) Group {
+	if reportedError == nil {
+		reportedError = ErrGroupClosed
+	}
+	return &closedGroup{err: reportedError}
+}
+
+func (c closedGroup) Go(_ func(Canceler) error) error {
+	return c.err
+}
+
 // TaskGroup implements the Group interface. Once the group is shutting down,
 // no more goroutines can be created via Go.
 // The Stop method of TaskGroup will block until all sub-tasks have returned.

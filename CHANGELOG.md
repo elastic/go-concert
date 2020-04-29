@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Add MultiErrGroup (#20).
 - Add Group interface and TaskGroup implementation (#23).
 - Add SafeWaitGroup (#23).
+- Add ClosedGroup (#24).
 
 ### Changed
 
