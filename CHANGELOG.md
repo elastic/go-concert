@@ -5,7 +5,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
-- Add timed.Wait and timed.Periodic helpers for using timed operations with context.Context based cancellation. (#26)
 
 ### Changed
 
@@ -14,6 +13,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Removed
 
 ### Fixed
+
+## [0.0.3]
+
+### Added
+- Add timed.Wait and timed.Periodic helpers for using timed operations with context.Context based cancellation. (#26)
 
 ## [0.0.2]
 
@@ -29,5 +33,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - FromCancel returns original context.Context, if input implements this type. Deadline and Value will not be ignored anymore. (#22)
 
 
-[Unreleased]: https://github.com/elastic/go-ucfg/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/elastic/go-ucfg/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/elastic/go-ucfg/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/elastic/go-ucfg/compare/v0.0.1...v0.0.2
