@@ -33,6 +33,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - FromCancel returns original context.Context, if input implements this type. Deadline and Value will not be ignored anymore. (#22)
 
 
-[Unreleased]: https://github.com/elastic/go-ucfg/compare/v0.0.3...HEAD
-[0.0.3]: https://github.com/elastic/go-ucfg/compare/v0.0.2...v0.0.3
-[0.0.2]: https://github.com/elastic/go-ucfg/compare/v0.0.1...v0.0.2
+[Unreleased]: https://github.com/elastic/go-concert/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/elastic/go-concert/compare/v0.0.2...v0.0.3
+[0.0.2]: https://github.com/elastic/go-concert/compare/v0.0.1...v0.0.2
