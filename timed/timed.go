@@ -51,7 +51,7 @@ func Wait(ctx canceler, duration time.Duration) error {
 // Periodic executes fn on every period. Periodic returns if the context is
 // cancelled.
 // The underlying ticket adjusts the intervals or drops ticks to make up for
-// slow runs of fn. If fn is active, Peridoc will only return when fn has
+// slow runs of fn. If fn is active, Periodic will only return when fn has
 // finished.
 // The period must be greater than 0, otherwise Periodic panics.
 func Periodic(ctx canceler, period time.Duration, fn func()) {
@@ -60,7 +60,7 @@ func Periodic(ctx canceler, period time.Duration, fn func()) {
 
 	done := ctx.Done()
 	for {
-		// always check for cancel first, to not accidentily trigger another run if
+ 		// always check for cancel first, to not accidentally trigger another run if
 		// the context is already cancelled, but we have already received another
 		// ticker signal
 		select {
