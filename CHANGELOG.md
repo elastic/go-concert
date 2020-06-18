@@ -5,6 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
+- Add timed.Wait and timed.Periodic helpers for using timed operations with context.Context based cancellation. (#26)
 
 ### Changed
 
