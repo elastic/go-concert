@@ -54,26 +54,32 @@ func Wait(ctx canceler, duration time.Duration) error {
 // slow runs of fn. If fn is active, Periodic will only return when fn has
 // finished.
 // The period must be greater than 0, otherwise Periodic panics.
-func Periodic(ctx canceler, period time.Duration, fn func()) {
+//
+// If fn returns an Error, then the loop is stopped and the functions error is
+// returned directly. On normal termination the contexts reported error will be
+// reported.
+func Periodic(ctx canceler, period time.Duration, fn func() error) error {
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 
 	done := ctx.Done()
 	for {
- 		// always check for cancel first, to not accidentally trigger another run if
+		// always check for cancel first, to not accidentally trigger another run if
 		// the context is already cancelled, but we have already received another
 		// ticker signal
 		select {
 		case <-done:
-			return
+			return ctx.Err()
 		default:
 		}
 
 		select {
 		case <-ticker.C:
-			fn()
+			if err := fn(); err != nil {
+				return err
+			}
 		case <-done:
-			return
+			return ctx.Err()
 		}
 	}
 }
