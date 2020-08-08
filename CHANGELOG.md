@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Update `timed.Period` to return an error. The callback is required to return an error as well. (#28)
+
 ### Deprecated
 
 ### Removed
