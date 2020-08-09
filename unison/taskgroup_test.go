@@ -18,6 +18,7 @@
 package unison
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -38,6 +39,23 @@ func TestTaskGroup(t *testing.T) {
 		err = grp.Stop()
 		require.NoError(t, err)
 		<-ch // this blocks if works did not shut down
+	})
+
+	t.Run("cancel is no error", func(t *testing.T) {
+		var grp TaskGroup
+		grp.Go(func(_ Canceler) error { return context.Canceled })
+		require.NoError(t, grp.Stop())
+	})
+
+	t.Run("cancel does not trigger stop", func(t *testing.T) {
+		count := 0
+		grp := TaskGroup{
+			StopOnError: func(_ error) bool { count++; return false },
+		}
+		grp.Go(func(_ Canceler) error { return context.Canceled })
+		grp.Stop()
+
+		require.Equal(t, 0, count)
 	})
 
 	t.Run("can not create go-routine if group has been stopped", func(t *testing.T) {

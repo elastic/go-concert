@@ -18,9 +18,9 @@
 package unison
 
 import (
+	"context"
 	"sync"
 
-	"github.com/elastic/go-concert/chorus"
 	"github.com/urso/sderr"
 )
 
@@ -81,7 +81,8 @@ type TaskGroup struct {
 	wg   SafeWaitGroup
 
 	initOnce sync.Once
-	closer   *chorus.Closer
+	closer   context.Context
+	cancel   context.CancelFunc
 }
 
 var _ Group = (*TaskGroup)(nil)
@@ -89,7 +90,7 @@ var _ Group = (*TaskGroup)(nil)
 // init initializes internal state the first time the group is actively used.
 func (t *TaskGroup) init() {
 	t.initOnce.Do(func() {
-		t.closer = chorus.NewCloser(nil)
+		t.closer, t.cancel = context.WithCancel(context.Background())
 	})
 }
 
@@ -107,14 +108,14 @@ func (t *TaskGroup) Go(fn func(Canceler) error) error {
 	go func() {
 		defer t.wg.Done()
 		err := fn(t.closer)
-		if err != nil {
+		if err != nil && err != context.Canceled {
 			t.mu.Lock()
 			t.errs = append(t.errs, err)
 			t.mu.Unlock()
 
 			if t.StopOnError != nil && t.StopOnError(err) {
 				t.wg.Close()
-				t.closer.Close()
+				t.cancel()
 			}
 		}
 	}()
@@ -133,7 +134,7 @@ func (t *TaskGroup) wait() []error {
 // It returns an error that contains all errors encountered.
 func (t *TaskGroup) Stop() error {
 	t.init()
-	t.closer.Close()
+	t.cancel()
 	errs := t.wait()
 	if len(errs) > 0 {
 		return sderr.WrapAll(errs, "task failures")
