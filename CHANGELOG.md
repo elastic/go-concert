@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Add `osctx.WithSignal` utility function, which creates a context that will be cancelled if the process receives an os.Signal. (#31)
+
 ### Changed
 
 ### Deprecated
