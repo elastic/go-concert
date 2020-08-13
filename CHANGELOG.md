@@ -6,15 +6,23 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+## [0.0.4]
+
+### Added
+
 - Add `osctx.WithSignal` utility function, which creates a context that will be cancelled if the process receives an os.Signal. (#31)
 
 ### Changed
 
 - Update `timed.Period` to return an error. The callback is required to return an error as well. (#28)
-
-### Deprecated
-
-### Removed
 
 ### Fixed
 
@@ -39,6 +47,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - FromCancel returns original context.Context, if input implements this type. Deadline and Value will not be ignored anymore. (#22)
 
 
-[Unreleased]: https://github.com/elastic/go-concert/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/elastic/go-concert/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/elastic/go-concert/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/elastic/go-concert/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/elastic/go-concert/compare/v0.0.1...v0.0.2
