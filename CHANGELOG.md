@@ -18,6 +18,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Fix TaskGroup reporting context.Cancel as error. (#30)
+
 ## [0.0.3]
 
 ### Added
