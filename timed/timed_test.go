@@ -19,8 +19,11 @@ package timed
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWait(t *testing.T) {
@@ -63,11 +66,12 @@ func TestPeriodic(t *testing.T) {
 
 		count := 0
 		const limit = 3
-		Periodic(ctx, 10*time.Millisecond, func() {
+		Periodic(ctx, 10*time.Millisecond, func() error {
 			count++
 			if count == limit {
 				cancel()
 			}
+			return nil
 		})
 
 		if count != limit {
@@ -80,12 +84,27 @@ func TestPeriodic(t *testing.T) {
 		cancel()
 
 		count := 0
-		Periodic(ctx, 100*time.Millisecond, func() {
+		Periodic(ctx, 100*time.Millisecond, func() error {
 			count++
+			return nil
 		})
 
 		if count != 0 {
 			t.Fatalf("Expected the periodic function to not be executed, but function was run %v times", count)
 		}
+	})
+
+	t.Run("report cancelation signal", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.TODO())
+		cancel()
+
+		err := Periodic(ctx, 100*time.Millisecond, func() error { return nil })
+		assert.Equal(t, context.Canceled, err)
+	})
+
+	t.Run("return function error", func(t *testing.T) {
+		testErr := errors.New("test error")
+		err := Periodic(context.TODO(), 10*time.Millisecond, func() error { return testErr })
+		assert.Equal(t, testErr, err)
 	})
 }
