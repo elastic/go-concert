@@ -41,15 +41,15 @@ pipeline {
             values '1.13.15', '1.14.13'
           }
           axis {
-            name 'OS_VERSION'
+            name 'PLATFORM'
             values 'ubuntu-18 && immutable', 'macosx' // TODO: support windows, 'windows-2019 && immutable'
           }
         }
         stages {
           stage('Test') {
-            agent { label "${OS_VERSION}" }
+            agent { label "${PLATFORM}" }
             steps {
-              withGithubNotify(context: "Test-${GO_VERSION}-${OS_VERSION}") {
+              withGithubNotify(context: "Test-${GO_VERSION}-${PLATFORM}") {
                 cleanup()
                 withGoEnv(version: "${GO_VERSION}"){
                   dir("${BASE_DIR}"){
