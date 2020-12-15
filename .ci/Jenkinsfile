@@ -42,7 +42,7 @@ pipeline {
           }
           axis {
             name 'PLATFORM'
-            values 'ubuntu-18 && immutable', 'macosx' // TODO: support windows, 'windows-2019 && immutable'
+            values 'ubuntu-18 && immutable', 'macosx', 'windows-2019 && immutable'
           }
         }
         stages {
@@ -52,9 +52,14 @@ pipeline {
               withGithubNotify(context: "Test-${GO_VERSION}-${PLATFORM}") {
                 deleteDir()
                 unstash 'source'
-                withGoEnv(version: "${GO_VERSION}"){
+                withGoEnvMultiplatform(version: "${GO_VERSION}"){
                   dir("${BASE_DIR}"){
-                    sh(label: "go test for ${GO_VERSION} in ${PLATFORM}", script: '.ci/test.sh')
+                    whenTrue(isUnix()) {
+                      sh(label: "go test for ${GO_VERSION} in ${PLATFORM}", script: '.ci/test.sh')
+                    }
+                    whenFalse(isUnix()) {
+                      bat(label: "go test for ${GO_VERSION} in ${PLATFORM}", script: '.ci/test.bat')
+                    }
                   }
                 }
               }
@@ -72,6 +77,32 @@ pipeline {
   post {
     cleanup {
       notifyBuildResult(prComment: true)
+    }
+  }
+}
+
+def withGoEnvMultiplatform(Map args = [:], Closure body) {
+  if(isUnix()) {
+    withGoEnv(version: "${args.version}"){
+      body()
+    }
+  } else {
+    def mingwArch = is32() ? '32' : '64'
+    def goArch = is32() ? '386' : 'amd64'
+    def chocoPath = 'C:\\ProgramData\\chocolatey\\bin'
+    def userProfile="${env.WORKSPACE}"
+    def goRoot = "${userProfile}\\.gvm\\versions\\go${args.version}.windows.${goArch}"
+    def path = "${env.WORKSPACE}\\bin;${goRoot}\\bin;${chocoPath};C:\\tools\\mingw${mingwArch}\\bin;${env.PATH}"
+    withEnv([
+      "GOPATH=${env.WORKSPACE}",
+      "GOROOT=${goRoot}",
+      "HOME=${env.WORKSPACE}",
+      "PATH=${path}"
+    ]) {
+      retryWithSleep(retries: 2, seconds: 5, backoff: true){
+        bat(label: "Install Go/Mage ${args.version}", script: ".ci/install-tools.bat")
+      }
+      body()
     }
   }
 }
