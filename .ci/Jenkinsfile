@@ -54,9 +54,14 @@ pipeline {
                 unstash 'source'
                 withGoEnv(version: "${GO_VERSION}"){
                   dir("${BASE_DIR}"){
-                    sh(label: "go test for ${GO_VERSION} in ${PLATFORM}", script: 'go test "./..." -v')
+                    sh(label: "go test for ${GO_VERSION} in ${PLATFORM}", script: '.ci/test.sh')
                   }
                 }
+              }
+            }
+            post {
+              always {
+                junit(allowEmptyResults: true, keepLongStdio: true, testResults: "${BASE_DIR}/build/*.xml")
               }
             }
           }
