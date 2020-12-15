@@ -52,7 +52,9 @@ pipeline {
               withGithubNotify(context: "Test-${GO_VERSION}-${PLATFORM}") {
                 cleanup()
                 withGoEnv(version: "${GO_VERSION}"){
+                  sh('export;pwd;ls -la;ls -la ${GOPATH}')
                   dir("${BASE_DIR}"){
+                    sh('ls -la')
                     sh(label: 'test', script: 'go test "./..." -v')
                   }
                 }
