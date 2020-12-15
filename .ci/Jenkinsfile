@@ -100,7 +100,8 @@ def withGoEnvMultiplatform(Map args = [:], Closure body) {
       "GOPATH=${env.WORKSPACE}",
       "GOROOT=${goRoot}",
       "HOME=${env.WORKSPACE}",
-      "PATH=${path}"
+      "PATH=${path}",
+      "USERPROFILE=${userProfile}"
     ]) {
       body()
     }
