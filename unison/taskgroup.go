@@ -21,6 +21,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/elastic/go-concert/ctxtool"
 	"github.com/urso/sderr"
 )
 
@@ -88,10 +89,23 @@ type TaskGroup struct {
 var _ Group = (*TaskGroup)(nil)
 
 // init initializes internal state the first time the group is actively used.
-func (t *TaskGroup) init() {
+func (t *TaskGroup) init(parent Canceler) {
 	t.initOnce.Do(func() {
-		t.closer, t.cancel = context.WithCancel(context.Background())
+		t.closer, t.cancel = context.WithCancel(ctxtool.FromCanceller(parent))
 	})
+}
+
+// TaskGroupWithCancel creates a TaskGroup that gets stopped when the parent context
+// signals shutdown or the Stop method is called.
+//
+// Although the managed go-routines are signalled to stop when the parent context is done,
+// one still might want to call Stop in order to wait for the managed go-routines to stop.
+//
+// Associated resources are cleaned when the parent context is cancelled, or Stop is called.
+func TaskGroupWithCancel(canceler Canceler) *TaskGroup {
+	t := &TaskGroup{}
+	t.init(canceler)
+	return t
 }
 
 // Go starts a new go-routine and passes a Canceler to signal group shutdown.
@@ -99,7 +113,7 @@ func (t *TaskGroup) init() {
 // If the group was stopped before calling Go, then Go will return the
 // ErrGroupClosed error.
 func (t *TaskGroup) Go(fn func(Canceler) error) error {
-	t.init()
+	t.init(context.Background())
 
 	if err := t.wg.Add(1); err != nil {
 		return err
@@ -133,7 +147,7 @@ func (t *TaskGroup) wait() []error {
 // Stop sends a shutdown signal to all tasks, and waits for them to finish.
 // It returns an error that contains all errors encountered.
 func (t *TaskGroup) Stop() error {
-	t.init()
+	t.init(context.Background())
 	t.cancel()
 	errs := t.wait()
 	if len(errs) > 0 {

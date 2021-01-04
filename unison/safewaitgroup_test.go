@@ -18,7 +18,9 @@
 package unison
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,5 +106,29 @@ func TestSafeWaitGroup(t *testing.T) {
 		require.NoError(t, wg.Add(1))
 		require.NoError(t, wg.Add(-1))
 		wg.Wait() // will block if counter resource has not been released
+	})
+
+	t.Run("with context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.TODO())
+		wg := SafeWaitGroupWithCancel(ctx)
+
+		err := wg.Add(1)
+		require.NoError(t, err, "expact waitgroup to be active")
+
+		cancel()
+
+		// cancel is evaluate async. Let's wait a little in case of a race or slow test environment
+		start := time.Now()
+		for {
+			if time.Since(start) > 10*time.Second {
+				t.Fatalf("SafeWaitGroup was not stopped")
+			}
+
+			err := wg.Add(1)
+			if err == ErrGroupClosed {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
 	})
 }

@@ -63,7 +63,9 @@ func MergeContexts(ctx1, ctx2 context.Context) (context.Context, context.CancelF
 
 // MergeCancellation creates a new context that will be cancelled if one of the
 // two input contexts gets canceled. The `Values` and `Deadline` are taken from the first context.
-func MergeCancellation(ctx context.Context, other canceller) (context.Context, context.CancelFunc) {
+func MergeCancellation(parent, other canceller) (context.Context, context.CancelFunc) {
+	ctx := FromCanceller(parent)
+
 	err := ctx.Err()
 	if err == nil {
 		err = other.Err()

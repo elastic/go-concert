@@ -20,6 +20,7 @@ package unison
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -85,5 +86,21 @@ func TestTaskGroup(t *testing.T) {
 
 		// send stop to collect errors
 		require.Error(t, grp.Stop())
+	})
+
+	t.Run("with context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.TODO())
+		grp := TaskGroupWithCancel(ctx)
+
+		var wg sync.WaitGroup // use waitgroup to check the managed go-routine did indeed return
+		wg.Add(1)
+		grp.Go(func(c Canceler) error {
+			defer wg.Done()
+			<-c.Done()
+			return nil
+		})
+
+		cancel()
+		wg.Wait()
 	})
 }

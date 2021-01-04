@@ -28,7 +28,7 @@ type chanContext <-chan struct{}
 
 // WithChannel creates a context that is cancelled if the parent context is cancelled
 // or if the given channel is closed.
-func WithChannel(parent context.Context, ch <-chan struct{}) (context.Context, context.CancelFunc) {
+func WithChannel(parent canceller, ch <-chan struct{}) (context.Context, context.CancelFunc) {
 	return MergeCancellation(parent, chanCanceller(ch))
 }
 

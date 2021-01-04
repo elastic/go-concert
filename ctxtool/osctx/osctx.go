@@ -21,6 +21,9 @@ import (
 	"context"
 	"os"
 	"os/signal"
+
+	"github.com/elastic/go-concert/ctxtool"
+	"github.com/elastic/go-concert/unison"
 )
 
 // WithSignal creates a context that will be cancelled if any of the configured
@@ -41,8 +44,8 @@ import (
 //			// main run loop
 //		}
 //  }
-func WithSignal(ctx context.Context, sigs ...os.Signal) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(ctx)
+func WithSignal(parent unison.Canceler, sigs ...os.Signal) (context.Context, context.CancelFunc) {
+	ctx, cancel := context.WithCancel(ctxtool.FromCanceller(parent))
 	ch := make(chan os.Signal, 1)
 	go func() {
 		defer func() {

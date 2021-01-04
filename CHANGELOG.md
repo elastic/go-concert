@@ -6,7 +6,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Added SafeWaitGroupWithCancel constructor that registers the SafeWaitGroup
+  with a context.Context in order to signal 'Close'. #39
+- Added TaskGroupWithCancel constructor that registers the TaskGroup with a
+  context.Context in order to signal 'Close'. #39
+
 ### Changed
+
+- Many helpers in ctxtool now accept a simplified interface that only
+  implements `Done()` and `Err()`, to simplify use if ctxtool is used to
+  integrate with other types then context.Context. If the input type is already
+  context.Context, its type and functionality (Value, Deadline) are preserved.
+  #39
 
 ### Deprecated
 

@@ -31,7 +31,9 @@ type funcContext struct {
 
 // WithFunc creates a context that will execute the given function when the
 // parent context gets cancelled.
-func WithFunc(ctx context.Context, fn func()) (context.Context, context.CancelFunc) {
+func WithFunc(parent canceller, fn func()) (context.Context, context.CancelFunc) {
+	ctx := FromCanceller(parent)
+
 	if ctx.Err() != nil {
 		// context already cancelled, call fn
 		go fn()

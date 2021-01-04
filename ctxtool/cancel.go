@@ -55,9 +55,9 @@ func (ac *AutoCancel) Add(fn context.CancelFunc) {
 // With is used to wrap a Context constructer call that returns a context and a
 // cancel function.  The cancel function is automatically added to AutoCancel
 // and the original context is returned as is.
-func (ac *AutoCancel) With(ctx context.Context, cancel context.CancelFunc) context.Context {
+func (ac *AutoCancel) With(ctx canceller, cancel context.CancelFunc) context.Context {
 	ac.Add(cancel)
-	return ctx
+	return FromCanceller(ctx)
 }
 
 // FromCanceller creates a new context from a canceller. If a value that
