@@ -39,6 +39,19 @@ type AutoCancel struct {
 	funcs []context.CancelFunc
 }
 
+// CancelContext holds a context with its corresponding CancelFunc.
+// The cancel func will be called when calling `Cancel` on `CancelContext`.
+//
+// Although it is discouraged to store context.Context in structs, sometimes it
+// might be necessary to do so, because the cancellation needs to be called
+// asynchronously, or an interface with a Stop method is required
+// (context.Context is not part of the public API). One might still want to use a `context.Context`
+// for shutdown handling and propagation in that case.
+type CancelContext struct {
+	context.Context
+	cancel context.CancelFunc
+}
+
 // Cancel calls all registered cancel functions in reverse order.
 func (ac *AutoCancel) Cancel() {
 	for _, fn := range ac.funcs {
@@ -75,4 +88,27 @@ func (c cancelContext) Deadline() (deadline time.Time, ok bool) {
 
 func (c cancelContext) Value(key interface{}) interface{} {
 	return nil
+}
+
+// WithCancelContext creates a new CancelContext similar to `context.WithCancel`.
+// The `(CancelContext).Cancel()` method must be called in order to clean up associated resources.
+func WithCancelContext(parent context.Context) CancelContext {
+	return WrapCancel(context.WithCancel(parent))
+}
+
+// WrapCancel creates a CancelContext from an existing context and the associated cancel function.
+//
+// Example:
+//
+//    cancelCtx := WrapCancel(context.WithCancel(parent))
+func WrapCancel(parent context.Context, cancel context.CancelFunc) CancelContext {
+	return CancelContext{Context: parent, cancel: cancel}
+}
+
+// Cancel calls the underlying cancel function, which marks the associated
+// context as cancelled.
+func (c CancelContext) Cancel() {
+	if c.cancel != nil {
+		c.cancel()
+	}
 }
