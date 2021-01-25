@@ -10,6 +10,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   with a context.Context in order to signal 'Close'. #39
 - Added TaskGroupWithCancel constructor that registers the TaskGroup with a
   context.Context in order to signal 'Close'. #39
+- Added `CancelContext`, `WithCancelContext`, and `WrapCancel` in order to combine
+  a `context.Context` and a `context.CancelFunc` into a common struct that can be
+  stored as a single field in a struct. (#41)
 
 ### Changed
 

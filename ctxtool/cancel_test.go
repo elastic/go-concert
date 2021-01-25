@@ -46,3 +46,31 @@ func TestAutoCancel(t *testing.T) {
 		assert.Error(t, ctx.Err())
 	})
 }
+
+func TestCancelContext(t *testing.T) {
+	t.Run("canceled if parent is canceled", func(t *testing.T) {
+		parent, cancel := context.WithCancel(context.TODO())
+		cancel()
+
+		ctx := WithCancelContext(parent)
+		defer ctx.Cancel()
+		<-ctx.Done()
+	})
+
+	t.Run("cancellation", func(t *testing.T) {
+		ctx := WithCancelContext(context.TODO())
+		ctx.Cancel()
+		<-ctx.Done()
+	})
+
+	t.Run("wrap", func(t *testing.T) {
+		ctx := WrapCancel(context.WithCancel(context.TODO()))
+		ctx.Cancel()
+		<-ctx.Done()
+	})
+
+	t.Run("no panic if nil cancel", func(t *testing.T) {
+		ctx := WrapCancel(context.TODO(), nil)
+		ctx.Cancel()
+	})
+}
