@@ -13,6 +13,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Added `CancelContext`, `WithCancelContext`, and `WrapCancel` in order to combine
   a `context.Context` and a `context.CancelFunc` into a common struct that can be
   stored as a single field in a struct. (#41)
+- Add `unison.Cell` type. A cell stores states that can be updated
+  asynchronously without back-pressure (unlike a channel). Consumers can read the current state
+  or wait for new updates. (#44)
 
 ### Changed
 
