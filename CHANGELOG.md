@@ -27,6 +27,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ### Removed
 
 - Remove `chorus` package with types `CloseRef` and `Closer` (#40)
+- Remove `OnceSignaler` (#42)
+- Remove `unison.LockManager` (#42)
 
 ### Fixed
 
