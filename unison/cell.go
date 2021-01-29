@@ -17,6 +17,8 @@
 
 package unison
 
+import "sync"
+
 // Cell stores some state of type interface{}.
 // Intermittent updates are lost, in case the Cell is updated faster than the
 // consumer tries to read for state updates. Updates are immediate, there will
@@ -26,9 +28,11 @@ package unison
 // absolute state must be computed by the producer beforehand.
 //
 // A typical use-case for cell is to generate asynchronous configuration updates (no deltas).
+//
+// The zero value of Cell is valid, but a value of type Cell can not be copied.
 type Cell struct {
 	// All writes/reads to any of the internal fields must be guarded by mu.
-	mu Mutex
+	mu sync.Mutex
 
 	// logical config state update counters.
 	// The readID always follows writeID. We are using the most recent state
@@ -44,10 +48,7 @@ type Cell struct {
 // NewCell creates a new call instance with its initial state. Subsequent reads
 // will return this state, if there have been no updates.
 func NewCell(st interface{}) *Cell {
-	return &Cell{
-		mu:    MakeMutex(),
-		state: st,
-	}
+	return &Cell{state: st}
 }
 
 // Get returns the current state.
