@@ -43,6 +43,14 @@ type Cell struct {
 	state interface{}
 
 	waiter chan struct{}
+
+	// mini-object pool. If a wait gets cancelled we move the active 'waiter' to
+	// 'waiterBuf'. The next call to Wait will reuse the already allocated
+	// resource.
+	waiterBuf chan struct{}
+
+	numWaiter int // number of go-routines that share the current waiter. `numWaiter` must be 0 if `waiter == nil`
+	waiterID  uint
 }
 
 // NewCell creates a new call instance with its initial state. Subsequent reads
@@ -71,12 +79,22 @@ func (c *Cell) Wait(cancel Canceler) (interface{}, error) {
 	}
 
 	var waiter chan struct{}
+	var waiterID uint
+
 	if c.waiter == nil {
-		waiter = make(chan struct{})
+		if c.waiterBuf != nil {
+			waiter = c.waiterBuf
+			c.waiterBuf = nil
+		} else {
+			waiter = make(chan struct{})
+		}
 		c.waiter = waiter
+		c.waiterID++
 	} else {
 		waiter = c.waiter
 	}
+	waiterID = c.waiterID
+	c.numWaiter++
 	c.mu.Unlock()
 
 	select {
@@ -85,11 +103,31 @@ func (c *Cell) Wait(cancel Canceler) (interface{}, error) {
 		// detected has priority.
 		c.mu.Lock()
 		defer c.mu.Unlock()
-		c.waiter = nil
+
+		// if waiterID and c.waiterID do not match we have had a race with `Set` cleaning up
+		// the waiter state and another go-routine already calling wait before we managed to lock the mutex.
+		// In that case the old waiter resource has already be cleaned up and we should ignore
+		// the race.
+		if c.waiterID == waiterID {
+			c.numWaiter--
+			if c.numWaiter < 0 {
+				// Race between Set and context cancellation. Set did already clean up the overall waiter state.
+				// We must not attempt to clean up the state again -> repair state by setting c.numWaiter back to 0.
+				c.numWaiter = 0
+			} else if c.numWaiter == 0 {
+				// No more go-routine waiting for a state update and Set did not trigger yet. Let's clean up.
+				c.waiterBuf = c.waiter
+				c.waiter = nil
+			}
+		}
 		return nil, cancel.Err()
 	case <-waiter:
+		// waiter resource has been cleaned up by `Set`. Just read and return the
+		// current known state.
+
 		c.mu.Lock()
 		defer c.mu.Unlock()
+
 		return c.read(), nil
 	}
 }
@@ -106,6 +144,7 @@ func (c *Cell) Set(st interface{}) {
 	if c.waiter != nil {
 		close(c.waiter)
 		c.waiter = nil
+		c.numWaiter = 0
 	}
 }
 

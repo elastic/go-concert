@@ -60,19 +60,39 @@ func TestCell(t *testing.T) {
 	t.Run("wait for update", func(t *testing.T) {
 		cell := NewCell("init")
 
-		var wg sync.WaitGroup
-		defer wg.Wait()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		var tg TaskGroup
+		defer tg.Stop()
+		tg.Go(func(_ Canceler) error {
 			time.Sleep(100 * time.Millisecond)
-			cell.Set("test")
-		}()
+			cell.Set("updated")
+			return nil
+		})
 
 		val, err := cell.Wait(context.Background())
 		assert.NoError(t, err)
-		assert.Equal(t, "test", val)
+		assert.Equal(t, "updated", val)
+	})
+
+	t.Run("wait after cancel", func(t *testing.T) {
+		cell := NewCell("init")
+
+		cancelledCtx, cancel := context.WithCancel(context.TODO())
+		cancel()
+
+		_, err := cell.Wait(cancelledCtx)
+		assert.Equal(t, context.Canceled, err)
+
+		var tg TaskGroup
+		defer tg.Stop()
+		tg.Go(func(_ Canceler) error {
+			time.Sleep(100 * time.Millisecond)
+			cell.Set("updated")
+			return nil
+		})
+
+		val, err := cell.Wait(context.TODO())
+		assert.NoError(t, err)
+		assert.Equal(t, "updated", val)
 	})
 }
 
