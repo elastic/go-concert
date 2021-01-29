@@ -34,14 +34,17 @@ type Cell struct {
 	// All writes/reads to any of the internal fields must be guarded by mu.
 	mu sync.Mutex
 
+	// Current cell state to be Set and Get
+	state interface{}
+
 	// logical config state update counters.
 	// The readID always follows writeID. We are using the most recent state
 	// update if readID == waitID.
 	writeID uint64
 	readID  uint64
 
-	state interface{}
-
+	// waiter is not nil if we have at least on go-routine blocked in `Wait`. The
+	// `waiter` channel will be closed on `Set`.
 	waiter chan struct{}
 
 	// mini-object pool. If a wait gets cancelled we move the active 'waiter' to
@@ -49,8 +52,14 @@ type Cell struct {
 	// resource.
 	waiterBuf chan struct{}
 
-	numWaiter int // number of go-routines that share the current waiter. `numWaiter` must be 0 if `waiter == nil`
-	waiterID  uint
+	// number of go-routines that share the current waiter. `numWaiter` must be 0 if `waiter == nil`.
+	// Invariant: The `waiter` must not be nil if `numWaiter > 0`
+	numWaiter int
+
+	// current `waiter` instance ID in order to track potential races between multiple go-routines using Wait.
+	// We use fine grained locking. If `waiterSessionID` is increased since our last lock attempt, then our
+	// current wait session is 'outdated' (numWaiter, waiter must not be modified).
+	waiterSessionID uint
 }
 
 // NewCell creates a new call instance with its initial state. Subsequent reads
@@ -79,21 +88,24 @@ func (c *Cell) Wait(cancel Canceler) (interface{}, error) {
 	}
 
 	var waiter chan struct{}
-	var waiterID uint
+	var waiterSession uint
 
 	if c.waiter == nil {
+		// no active waiter: start new session
 		if c.waiterBuf != nil {
 			waiter = c.waiterBuf
 			c.waiterBuf = nil
 		} else {
 			waiter = make(chan struct{})
 		}
+
 		c.waiter = waiter
-		c.waiterID++
+		c.waiterSessionID++
 	} else {
+		// some other go-routine is already waiting. Let's join the current session.
 		waiter = c.waiter
 	}
-	waiterID = c.waiterID
+	waiterSession = c.waiterSessionID
 	c.numWaiter++
 	c.mu.Unlock()
 
@@ -104,16 +116,17 @@ func (c *Cell) Wait(cancel Canceler) (interface{}, error) {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 
-		// if waiterID and c.waiterID do not match we have had a race with `Set` cleaning up
-		// the waiter state and another go-routine already calling wait before we managed to lock the mutex.
-		// In that case the old waiter resource has already be cleaned up and we should ignore
-		// the race.
-		if c.waiterID == waiterID {
+		// if waiterID and c.waiterID do not match we have had a race with `Set`
+		// cleaning up the waiter state and another go-routine already calling wait
+		// before we managed to lock the mutex.  In that case our waiterSession has
+		// already been expired and we must not attempt to clean up the current
+		// waiter state.
+		if c.waiterSessionID == waiterSession {
 			c.numWaiter--
 			if c.numWaiter < 0 {
 				// Race between Set and context cancellation. Set did already clean up the overall waiter state.
-				// We must not attempt to clean up the state again -> repair state by setting c.numWaiter back to 0.
-				c.numWaiter = 0
+				// We must not attempt to clean up the state again -> repair state by undoing the local cleanup
+				c.numWaiter++
 			} else if c.numWaiter == 0 {
 				// No more go-routine waiting for a state update and Set did not trigger yet. Let's clean up.
 				c.waiterBuf = c.waiter
@@ -122,12 +135,11 @@ func (c *Cell) Wait(cancel Canceler) (interface{}, error) {
 		}
 		return nil, cancel.Err()
 	case <-waiter:
-		// waiter resource has been cleaned up by `Set`. Just read and return the
-		// current known state.
-
 		c.mu.Lock()
 		defer c.mu.Unlock()
 
+		// waiter resource has been cleaned up by `Set`. Just read and return the
+		// current known state.
 		return c.read(), nil
 	}
 }
@@ -148,6 +160,10 @@ func (c *Cell) Set(st interface{}) {
 	}
 }
 
+// read returns the current state and ensures that the next wait operation will
+// only block correctly if there was no Set since the last read.
+//
+// IMPORTANT: c.mu MUST be locked while calling read.
 func (c *Cell) read() interface{} {
 	c.readID = c.writeID
 	return c.state
