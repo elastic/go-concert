@@ -6,6 +6,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+## [0.1.0]
+
+### Added
+
 - Added SafeWaitGroupWithCancel constructor that registers the SafeWaitGroup
   with a context.Context in order to signal 'Close'. #39
 - Added TaskGroupWithCancel constructor that registers the TaskGroup with a
@@ -25,15 +37,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   context.Context, its type and functionality (Value, Deadline) are preserved.
   #39
 
-### Deprecated
-
 ### Removed
 
 - Remove `chorus` package with types `CloseRef` and `Closer` (#40)
 - Remove `OnceSignaler` (#42)
 - Remove `unison.LockManager` (#42)
-
-### Fixed
 
 ## [0.0.4]
 
@@ -68,7 +76,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - FromCancel returns original context.Context, if input implements this type. Deadline and Value will not be ignored anymore. (#22)
 
 
-[Unreleased]: https://github.com/elastic/go-concert/compare/v0.0.4...HEAD
+[Unreleased]: https://github.com/elastic/go-concert/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/elastic/go-concert/compare/v0.0.4...v0.1.0
 [0.0.4]: https://github.com/elastic/go-concert/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/elastic/go-concert/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/elastic/go-concert/compare/v0.0.1...v0.0.2
