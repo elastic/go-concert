@@ -6,7 +6,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- `(*TaskGroup.Context()` returns the groups internal Context. (#48)
+- `(*TaskGroup).Wait()` waits for all managed go routines to return. (#48)
+- `TaskGroup.MaxError`configures the maxium number of errors to keep. The
+  last N errors will be reported. (#48)
+- Introduce support for configurable group stop behavior via `OnQuit`
+  callbacks. Provided strategies: `ContinueOnErrors`, `RestartOnError`,
+  `StopAll`, `StopOnError`, `StopOnErrorOrCancel`. (#48)
+
 ### Changed
+
+- `(*TaskGroup).Go` will now pass `context.Context` to the run function. (#48)
+- `TaskGroup.StopOnError` has been superseded by `TaskGroup.OnQuit`. (#48)
 
 ### Deprecated
 
