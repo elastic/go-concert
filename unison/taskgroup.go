@@ -105,7 +105,7 @@ type TaskGroupStopAction uint
 
 const (
 	// TaskGroupStopActionContinue notifies the TaskGroup that other managed go-routines
-	// should not be signled to shutdown.
+	// should not be signalled to shutdown.
 	TaskGroupStopActionContinue TaskGroupStopAction = iota
 
 	// TaskGroupStopActionShutdown notifies the TaskGroup that shutdown should be signaled
