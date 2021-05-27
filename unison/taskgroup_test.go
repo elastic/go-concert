@@ -96,7 +96,7 @@ func TestTaskGroup_MaxErrors(t *testing.T) {
 
 	const numErrors = 5
 	const limit = 3
-	tg := TaskGroup{MaxErrors: limit}
+	tg := TaskGroup{MaxErrors: limit, OnQuit: ContinueOnErrors}
 
 	var errs [numErrors]error
 	for i := 0; i < numErrors; i++ {
