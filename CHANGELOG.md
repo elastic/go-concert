@@ -18,6 +18,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 - `(*TaskGroup).Go` will now pass `context.Context` to the run function. (#48)
 - `TaskGroup.StopOnError` has been superseded by `TaskGroup.OnQuit`. (#48)
+- `TaskGroup` will now shutdown by default if a managed go-routine did return an error. (#48)
 
 ### Deprecated
 

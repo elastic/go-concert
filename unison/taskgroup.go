@@ -80,7 +80,7 @@ type TaskGroup struct {
 	//
 	// Common OnError handlers are given by ContinueOnErrors, StopOnError,
 	// StopOnErrorOrCancel.
-	// By default ContinueOnErrors will be used.
+	// By default StopOnError will be used.
 	OnQuit TaskGroupQuitHandler
 
 	// MaxErrors configures the maximum amount of errors the TaskGroup will record.
@@ -124,7 +124,7 @@ func (t *TaskGroup) init(parent Canceler) {
 	t.initOnce.Do(func() {
 		t.closer, t.cancel = context.WithCancel(ctxtool.FromCanceller(parent))
 		if t.OnQuit == nil {
-			t.OnQuit = ContinueOnErrors
+			t.OnQuit = StopOnError
 		}
 		if t.MaxErrors == 0 {
 			t.MaxErrors = 10
