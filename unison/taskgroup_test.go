@@ -20,6 +20,7 @@ package unison
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -29,78 +30,241 @@ import (
 func TestTaskGroup(t *testing.T) {
 	t.Run("stop sends signal to worker", func(t *testing.T) {
 		var grp TaskGroup
-		ch := make(chan bool, 1)
-		err := grp.Go(func(cancel Canceler) error {
+		wg, wgStart := wgCount(1), wgCount(1)
+		err := grp.Go(func(cancel context.Context) error {
+			defer wg.Done()
+			wgStart.Done()
 			<-cancel.Done()
-			ch <- true
 			return nil
 		})
 		require.NoError(t, err)
 
+		wgStart.Wait()
 		err = grp.Stop()
 		require.NoError(t, err)
-		<-ch // this blocks if works did not shut down
+		wg.Wait()
 	})
 
 	t.Run("cancel is no error", func(t *testing.T) {
 		var grp TaskGroup
-		grp.Go(func(_ Canceler) error { return context.Canceled })
+		grp.Go(func(_ context.Context) error { return context.Canceled })
 		require.NoError(t, grp.Stop())
-	})
-
-	t.Run("cancel does not trigger stop", func(t *testing.T) {
-		count := 0
-		grp := TaskGroup{
-			StopOnError: func(_ error) bool { count++; return false },
-		}
-		grp.Go(func(_ Canceler) error { return context.Canceled })
-		grp.Stop()
-
-		require.Equal(t, 0, count)
 	})
 
 	t.Run("can not create go-routine if group has been stopped", func(t *testing.T) {
 		var grp TaskGroup
 		grp.Stop()
-		require.Equal(t, ErrGroupClosed, grp.Go(func(_ Canceler) error { return nil }))
+		require.Equal(t, ErrGroupClosed, grp.Go(func(_ context.Context) error { return nil }))
 	})
 
-	t.Run("stop all tasks on error", func(t *testing.T) {
-		grp := TaskGroup{
-			StopOnError: func(_ error) bool { return true },
-		}
-
-		ch := make(chan bool, 2)
-		grp.Go(func(c Canceler) error {
-			<-c.Done()
-			ch <- true
-			return nil
-		})
-		grp.Go(func(c Canceler) error {
-			ch <- true
-			return errors.New("oops")
-		})
-
-		<-ch
-		<-ch // block if not all workers have been shut down
-
-		// send stop to collect errors
-		require.Error(t, grp.Stop())
-	})
-
-	t.Run("with context", func(t *testing.T) {
+	t.Run("signal shutdown via context", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.TODO())
 		grp := TaskGroupWithCancel(ctx)
 
-		var wg sync.WaitGroup // use waitgroup to check the managed go-routine did indeed return
-		wg.Add(1)
-		grp.Go(func(c Canceler) error {
+		wg, wgStart := wgCount(1), wgCount(1)
+		grp.Go(func(c context.Context) error {
 			defer wg.Done()
+			wgStart.Done()
 			<-c.Done()
 			return nil
 		})
 
+		wgStart.Wait()
 		cancel()
 		wg.Wait()
 	})
+
+	t.Run("Context", func(t *testing.T) {
+		t.Run("stop is propogate", func(t *testing.T) {
+			var tg TaskGroup
+			ctx := tg.Context()
+			tg.Stop()
+			require.Equal(t, context.Canceled, ctx.Err())
+		})
+
+		t.Run("parent context shutdown is propagated", func(t *testing.T) {
+			parentCtx, cancel := context.WithCancel(context.TODO())
+			tg := TaskGroupWithCancel(parentCtx)
+			ctx := tg.Context()
+			cancel()
+			require.Equal(t, context.Canceled, ctx.Err())
+		})
+	})
+}
+
+func TestTaskGroup_MaxErrors(t *testing.T) {
+
+	const numErrors = 5
+	const limit = 3
+	tg := TaskGroup{MaxErrors: limit, OnQuit: ContinueOnErrors}
+
+	var errs [numErrors]error
+	for i := 0; i < numErrors; i++ {
+		errs[i] = fmt.Errorf("opps: %v", i)
+	}
+
+	for _, err := range errs {
+		wg := wgCount(1)
+		tg.Go(func(_ context.Context) error {
+			defer wg.Done()
+			return err
+		})
+		wg.Wait()
+	}
+
+	want := errs[numErrors-limit:]
+	got := tg.waitErrors()
+	require.Equal(t, want, got)
+}
+
+func TestTaskgroup_OnQuit_ContinueOnError(t *testing.T) {
+	onQuit := ContinueOnErrors
+
+	t.Run("continue on normal return", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupContinuesIf(t, &grp, finishedGroupWorker)
+	})
+
+	t.Run("continues on error", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupContinuesIf(t, &grp, failingGroupWorker)
+	})
+}
+
+func TestTaskgroup_OnQuit_RestartOnError(t *testing.T) {
+	onQuit := RestartOnError
+
+	t.Run("continue on normal return", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupContinuesIf(t, &grp, finishedGroupWorker)
+	})
+
+	t.Run("restarts on error", func(t *testing.T) {
+		var count int
+		grp := TaskGroup{OnQuit: onQuit}
+
+		grp.Go(func(_ context.Context) error {
+			count++
+			t.Log(count)
+			if count == 1 {
+				return errors.New("oops")
+			}
+			return nil
+		})
+
+		grp.Wait()
+		require.Equal(t, 2, count)
+	})
+
+}
+
+func TestTaskgroup_OnQuit_StopAll(t *testing.T) {
+	onQuit := StopAll
+
+	t.Run("stops on normal return", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupStopsIf(t, &grp, finishedGroupWorker)
+	})
+
+	t.Run("stop on cancel", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupStopsIf(t, &grp, internalCancelGroupWorker)
+	})
+
+	t.Run("stop on error", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupStopsIf(t, &grp, failingGroupWorker)
+	})
+}
+
+func TestTaskgroup_OnQuit_StopOnError(t *testing.T) {
+	onQuit := StopOnError
+
+	t.Run("continue on normal return", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupContinuesIf(t, &grp, finishedGroupWorker)
+	})
+
+	t.Run("continue on cancel", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupContinuesIf(t, &grp, internalCancelGroupWorker)
+	})
+
+	t.Run("stop on error", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupStopsIf(t, &grp, failingGroupWorker)
+	})
+}
+
+func TestTaskgroup_OnQuit_StopOnErrorOrCancel(t *testing.T) {
+	onQuit := StopOnErrorOrCancel
+
+	t.Run("continue on normal return", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupContinuesIf(t, &grp, finishedGroupWorker)
+	})
+
+	t.Run("stop on cancel", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupStopsIf(t, &grp, internalCancelGroupWorker)
+	})
+
+	t.Run("stop on error", func(t *testing.T) {
+		grp := TaskGroup{OnQuit: onQuit}
+		testTaskGroupStopsIf(t, &grp, failingGroupWorker)
+	})
+}
+
+func testTaskGroupContinuesIf(t *testing.T, grp *TaskGroup, fnFirst func(context.Context) error) {
+	wgFirst, wgSecondStart, wgSecondDone := wgCount(1), wgCount(1), wgCount(1)
+	grp.Go(func(ctx context.Context) error {
+		defer wgFirst.Done()
+		return fnFirst(ctx)
+	})
+
+	wgFirst.Wait()
+	require.NoError(t, grp.Go(func(c context.Context) error {
+		defer wgSecondDone.Done()
+		wgSecondStart.Done()
+		<-c.Done()
+		return nil
+	}))
+
+	wgSecondStart.Wait()
+	grp.Stop()
+	wgSecondDone.Wait()
+}
+
+func testTaskGroupStopsIf(t *testing.T, grp *TaskGroup, fnFail func(context.Context) error) {
+	wgStart := wgCount(1)
+	grp.Go(func(ctx context.Context) error {
+		wgStart.Done()
+		<-ctx.Done()
+		return nil
+	})
+
+	grp.Go(func(ctx context.Context) error {
+		wgStart.Wait()
+		return fnFail(ctx)
+	})
+
+	grp.Wait()
+}
+
+func wgCount(n int) *sync.WaitGroup {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	return &wg
+}
+
+func failingGroupWorker(_ context.Context) error {
+	return errors.New("oops")
+}
+
+func finishedGroupWorker(_ context.Context) error {
+	return nil
+}
+
+func internalCancelGroupWorker(_ context.Context) error {
+	return context.Canceled
 }

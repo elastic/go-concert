@@ -62,7 +62,7 @@ func TestCell(t *testing.T) {
 
 		var tg TaskGroup
 		defer tg.Stop()
-		tg.Go(func(_ Canceler) error {
+		tg.Go(func(_ context.Context) error {
 			time.Sleep(100 * time.Millisecond)
 			cell.Set("updated")
 			return nil
@@ -84,7 +84,7 @@ func TestCell(t *testing.T) {
 
 		var tg TaskGroup
 		defer tg.Stop()
-		tg.Go(func(_ Canceler) error {
+		tg.Go(func(_ context.Context) error {
 			time.Sleep(100 * time.Millisecond)
 			cell.Set("updated")
 			return nil
