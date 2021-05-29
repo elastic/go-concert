@@ -6,6 +6,18 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+## [0.2.0]
+
+### Added
+
 - `(*TaskGroup.Context()` returns the groups internal Context. (#48)
 - `(*TaskGroup).Wait()` waits for all managed go routines to return. (#48)
 - `TaskGroup.MaxError`configures the maxium number of errors to keep. The
@@ -19,12 +31,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - `(*TaskGroup).Go` will now pass `context.Context` to the run function. (#48)
 - `TaskGroup.StopOnError` has been superseded by `TaskGroup.OnQuit`. (#48)
 - `TaskGroup` will now shutdown by default if a managed go-routine did return an error. (#48)
-
-### Deprecated
-
-### Removed
-
-### Fixed
 
 ## [0.1.0]
 
@@ -88,7 +94,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - FromCancel returns original context.Context, if input implements this type. Deadline and Value will not be ignored anymore. (#22)
 
 
-[Unreleased]: https://github.com/elastic/go-concert/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/elastic/go-concert/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/elastic/go-concert/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/elastic/go-concert/compare/v0.0.4...v0.1.0
 [0.0.4]: https://github.com/elastic/go-concert/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/elastic/go-concert/compare/v0.0.2...v0.0.3
