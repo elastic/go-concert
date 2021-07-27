@@ -38,7 +38,12 @@ type canceler interface {
 //   fmt.Println("done")
 func Wait(ctx canceler, duration time.Duration) error {
 	timer := time.NewTimer(duration)
-	defer timer.Stop()
+	defer func() {
+		// drain the channel if needed
+		if !timer.Stop() {
+			<-timer.C
+		}
+	}()
 
 	select {
 	case <-ctx.Done():
