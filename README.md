@@ -1,4 +1,4 @@
-[![Build Status](https://beats-ci.elastic.co/job/Library/job/go-concert-mbp/job/master/badge/icon)](https://beats-ci.elastic.co/job/Library/job/go-concert-mbp/job/master/)
+[![Build Status](https://beats-ci.elastic.co/job/Library/job/go-concert-mbp/job/main/badge/icon)](https://beats-ci.elastic.co/job/Library/job/go-concert-mbp/job/main/)
 
 # go-concert
 
