@@ -42,7 +42,7 @@ pipeline {
           }
           axis {
             name 'PLATFORM'
-            values 'ubuntu-18 && immutable', 'windows-2019 && immutable'
+            values 'ubuntu-18 && immutable', 'windows-2019 && immutable', 'macos11 && x86_64'
           }
         }
         stages {
