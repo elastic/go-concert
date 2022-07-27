@@ -17,7 +17,13 @@
 
 package timed
 
-import "time"
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/elastic/go-concert/ctxtool"
+)
 
 type canceler interface {
 	Done() <-chan struct{}
@@ -82,4 +88,38 @@ func Periodic(ctx canceler, period time.Duration, fn func() error) error {
 			return ctx.Err()
 		}
 	}
+}
+
+// RetryUntil executes fn periodically until the function no longer returns an error, or
+// the timeout has elapsed, or the context is canceled. If the timeout has elapsed and
+// fn still returns an error, RetryUntil wraps the original error from fn and returns it.
+// If fn no longer returns an error, RetryUntil returns nil.
+//
+// Example:
+//     err := RetryUntil(context.Background(), 1 * time.Second, 10 * time.Millisecond, func(ctx context.Contect) error {
+//         actual := getCount(ctx)
+//         if actual != 3 {
+//             return fmt.Errorf("expected 3 items, got %d", actual)
+//         }
+//     })
+//     if err != nil {
+//         fmt.Printf("RetryUntil has failed: %+v\n", err)
+//     } else {
+//         fmt.Println("good things come to those who wait")
+//     }
+func RetryUntil(ctx canceler, timeout, period time.Duration, fn func(canceler) error) error {
+	ctx, cancel := context.WithTimeout(ctxtool.FromCanceller(ctx), timeout)
+	defer cancel()
+
+	for ctx.Err() == nil {
+		checkErr := fn(ctx)
+		if checkErr == nil {
+			break
+		}
+
+		if err := Wait(ctx, period); err != nil {
+			return fmt.Errorf("the function has exceeded the deadline: %w", checkErr)
+		}
+	}
+	return nil
 }
