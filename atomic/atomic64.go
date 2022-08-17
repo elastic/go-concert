@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// +build amd64 arm64 ppc64 ppc64le mips64 mips64le s390x
+// +build amd64 arm64 ppc64 ppc64le mips64 mips64le s390x riscv64
 
 package atomic
 
