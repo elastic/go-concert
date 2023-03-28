@@ -1,0 +1,36 @@
+---
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '**.asciidoc'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - '**.asciidoc'
+
+permissions:
+  contents: read
+
+## Concurrency only allowed in the main branch.
+## So old builds running for old commits within the same Pull Request are cancelled
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: echo 'command for linting'
+
+      - run: echo 'command for building'
+
+      - run: echo 'command for testing'
