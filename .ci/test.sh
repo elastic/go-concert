@@ -9,6 +9,6 @@ go test "./..." -v 2>&1 | tee ${OUT_FILE}
 status=$?
 
 go get -v -u github.com/jstemmer/go-junit-report
-go-junit-report > "build/junit-${GO_VERSION}.xml" < ${OUT_FILE}
+go-junit-report > "build/junit-${GO_VERSION}-${RUNNER_OS}.xml" < ${OUT_FILE}
 
 exit ${status}
