@@ -1,4 +1,4 @@
-[![Build Status](https://beats-ci.elastic.co/job/Library/job/go-concert-mbp/job/main/badge/icon)](https://beats-ci.elastic.co/job/Library/job/go-concert-mbp/job/main/)
+[![ci](https://github.com/elastic/go-concert/actions/workflows/ci.yml/badge.svg)](https://github.com/elastic/go-concert/actions/workflows/ci.yml)
 
 # go-concert
 
