@@ -11,7 +11,7 @@ steps:
               - "1.15.12"
               - "1.16.4"
         command:
-          - ".buildkite/scripts/test.ps1"
+          - ".buildkite/scripts/test.sh"
         env:
           SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
         agents:
@@ -19,7 +19,7 @@ steps:
           cpu: "8"
           memory: "4G"
 
-      - label: ":win: Test matrix"
+      - label: ":windows: Test matrix"
         key: test-matrix-win
         matrix:
           setup:
@@ -34,7 +34,7 @@ steps:
           provider: "gcp"
           image: "family/ci-windows-2022"
 
-      - label: ":win: Test matrix"
+      - label: ":mac: Test matrix"
         key: test-matrix-mac
         matrix:
           setup:
@@ -42,9 +42,8 @@ steps:
               - "1.15.12"
               - "1.16.4"
         command:
-          - ".buildkite/scripts/test.ps1"
+          - ".buildkite/scripts/test.sh"
         env:
           SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
         agents:
-          provider: "gcp"
-          image: "family/ci-windows-2022"
+          queue: "macos-x86"

@@ -36,4 +36,6 @@ go test "./..." -v > $OUT_FILE | type $OUT_FILE
 $EXITCODE=$LASTEXITCODE
 $ErrorActionPreference = "Stop"
 
-go-junit-report > build\junit-$GO_VERSION.xml < $OUT_FILE
+Get-Content $OUT_FILE | go-junit-report > "build\uni-junit-$GO_VERSION.xml"
+Get-Content "build\uni-junit-$GO_VERSION.xml" -Encoding Unicode | Set-Content -Encoding UTF8 "build\junit-$GO_VERSION.xml"
+Remove-Item "build\uni-junit-$GO_VERSION.xml", "$OUT_FILE"
