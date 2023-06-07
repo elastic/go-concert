@@ -13,7 +13,7 @@ steps:
         command:
           - ".buildkite/scripts/test.ps1"
         env:
-          SETUP_GOLANG_VERSION: {{matrix.go_version}}
+          SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
         agents:
           image: golang:{{matrix.go_version}}
           cpu: "8"
@@ -29,7 +29,7 @@ steps:
         command:
           - ".buildkite/scripts/test.ps1"
         env:
-          SETUP_GOLANG_VERSION: {{matrix.go_version}}
+          SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
         agents:
           provider: "gcp"
           image: "family/ci-windows-2022"
@@ -44,7 +44,7 @@ steps:
         command:
           - ".buildkite/scripts/test.ps1"
         env:
-          SETUP_GOLANG_VERSION: {{matrix.go_version}}
+          SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
         agents:
           provider: "gcp"
           image: "family/ci-windows-2022"
