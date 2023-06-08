@@ -35,6 +35,7 @@ spec:
       description: Buildkite pipeline for the Go concert project
     spec:
       repository: elastic/go-concert
+      branch_configuration: "main"
       pipeline_file: ".buildkite/pipeline.yml"
       provider_settings:
         build_pull_request_forks: false
