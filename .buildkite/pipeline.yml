@@ -3,7 +3,7 @@
 steps:
   - group: ":linux: Test matrix"
     steps:
-      - label: ":linux: Test matrix"
+      - label: ":linux: Test matrix. Go {{matrix.go_version}}"
         key: test-matrix-lin
         matrix:
           setup:
@@ -19,7 +19,7 @@ steps:
           cpu: "8"
           memory: "4G"
 
-      - label: ":windows: Test matrix"
+      - label: ":windows: Test matrix. Go {{matrix.go_version}}"
         key: test-matrix-win
         matrix:
           setup:
@@ -34,7 +34,7 @@ steps:
           provider: "gcp"
           image: "family/ci-windows-2022"
 
-      - label: ":mac: Test matrix"
+      - label: ":mac: Test matrix. Go {{matrix.go_version}}"
         key: test-matrix-mac
         matrix:
           setup:
