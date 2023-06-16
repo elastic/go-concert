@@ -8,7 +8,7 @@ steps:
         matrix:
           setup:
             go_version:
-              - "1.15.12"
+              - "1.15.8"
               - "1.16.4"
         command:
           - ".buildkite/scripts/test.sh"
@@ -24,7 +24,7 @@ steps:
         matrix:
           setup:
             go_version:
-              - "1.15.12"
+              - "1.15.8"
               - "1.16.4"
         command:
           - ".buildkite/scripts/test.ps1"
@@ -33,17 +33,3 @@ steps:
         agents:
           provider: "gcp"
           image: "family/ci-windows-2022"
-
-      - label: ":mac: Test matrix. Go {{matrix.go_version}}"
-        key: test-matrix-mac
-        matrix:
-          setup:
-            go_version:
-              - "1.15.12"
-              - "1.16.4"
-        command:
-          - ".buildkite/scripts/test.sh"
-        env:
-          SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
-        agents:
-          queue: "macos-x86"

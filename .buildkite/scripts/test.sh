@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-awk --version
-sed --version
 # Prepare enviroment
 source .buildkite/scripts/pre-install-command.sh
 add_bin_path
@@ -15,7 +13,8 @@ mkdir -p build
 go test "./..." -v 2>&1 | tee ${OUT_FILE}
 status=$?
 
-go get -v -u github.com/jstemmer/go-junit-report
-go-junit-report > "build/junit-${GO_VERSION}.xml" < ${OUT_FILE}
+install_method=$(go_install_method "$SETUP_GOLANG_VERSION")
+go ${install_method} github.com/jstemmer/go-junit-report
+go-junit-report > "build/junit-${SETUP_GOLANG_VERSION}.xml" < ${OUT_FILE}
 
 exit ${status}

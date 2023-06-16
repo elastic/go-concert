@@ -19,3 +19,13 @@ retry() {
     done
     return 0
 }
+
+go_install_method() {
+    local version=$1
+    minor=$(awk  -F . '{print $2}' <<< "$version")
+    if [[ $minor -gt 16 ]]; then
+        echo "get -u"
+    else
+        echo "install"
+    fi
+}

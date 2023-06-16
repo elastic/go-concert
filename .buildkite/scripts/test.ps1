@@ -31,7 +31,7 @@ withGoJUnitReport
 # Run test
 $ErrorActionPreference = "Continue" # set +e
 mkdir -p build
-SET OUT_FILE=build\output-report.out
+$OUT_FILE="build\output-report.out"
 go test "./..." -v > $OUT_FILE | type $OUT_FILE
 $EXITCODE=$LASTEXITCODE
 $ErrorActionPreference = "Stop"
