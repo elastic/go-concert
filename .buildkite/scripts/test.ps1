@@ -18,9 +18,32 @@ function withGolang($version) {
     go env
 }
 
+function goInstallMethod($version) {
+    $regexp = '\d+\.\d+.\d+'
+    $match = [regex]::Match($version, $regexp)
+
+    if ($match.Success) {
+        Write-Host $match.Value
+        $split_version = $match.Value -split '\.'
+        $major = $split_version[0]
+        $minor = $split_version[1]
+        if ($minor -gt 15 -and $major -eq 1 -or $major -eq 2) {
+            return "get -u"
+        }
+        return "install"
+    }
+}
+
 function withGoJUnitReport {
     Write-Host "-- Install go-junit-report --"
-    go install github.com/jstemmer/go-junit-report/v2
+    $version = go version
+    $method = goInstallMethod $version
+    echo $method
+    if ($method = "install") {
+        go install github.com/jstemmer/go-junit-report/v2
+    } else {
+        go get -u github.com/jstemmer/go-junit-report/v2
+    }
 }
 
 # Prepare enviroment
@@ -36,6 +59,6 @@ go test "./..." -v > $OUT_FILE | type $OUT_FILE
 $EXITCODE=$LASTEXITCODE
 $ErrorActionPreference = "Stop"
 
-Get-Content $OUT_FILE | go-junit-report > "build\uni-junit-$GO_VERSION.xml"
-Get-Content "build\uni-junit-$GO_VERSION.xml" -Encoding Unicode | Set-Content -Encoding UTF8 "build\junit-$GO_VERSION-win.xml"
-Remove-Item "build\uni-junit-$GO_VERSION.xml", "$OUT_FILE"
+Get-Content $OUT_FILE | go-junit-report > "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml"
+Get-Content "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml" -Encoding Unicode | Set-Content -Encoding UTF8 "build\junit-$env:SETUP_GOLANG_VERSION-win.xml"
+Remove-Item "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml", "$OUT_FILE"
