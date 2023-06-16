@@ -11,9 +11,9 @@ if [[ ${method} != "install" ]]; then
     pass=false
 fi
 
-method=$(go_install_method "1.20.0")
+method=$(go_install_method "1.16.0")
 if [[ ${method} != "get -u" ]]; then
-    echo "Expected method for 1.20.0 'get -u'. Got: $method"
+    echo "Expected method for 1.16.0 'get -u'. Got: $method"
     pass=false
 fi
 

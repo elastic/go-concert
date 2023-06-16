@@ -23,10 +23,6 @@ function withGoJUnitReport {
     go install github.com/jstemmer/go-junit-report/v2
 }
 
-function goInstallMethod {
-
-}
-
 # Prepare enviroment
 fixCRLF
 withGolang $env:SETUP_GOLANG_VERSION
@@ -41,5 +37,5 @@ $EXITCODE=$LASTEXITCODE
 $ErrorActionPreference = "Stop"
 
 Get-Content $OUT_FILE | go-junit-report > "build\uni-junit-$GO_VERSION.xml"
-Get-Content "build\uni-junit-$GO_VERSION.xml" -Encoding Unicode | Set-Content -Encoding UTF8 "build\junit-$GO_VERSION.xml"
+Get-Content "build\uni-junit-$GO_VERSION.xml" -Encoding Unicode | Set-Content -Encoding UTF8 "build\junit-$GO_VERSION-win.xml"
 Remove-Item "build\uni-junit-$GO_VERSION.xml", "$OUT_FILE"
