@@ -22,6 +22,7 @@ retry() {
 
 go_install_method() {
     local version=$1
+    version=$(grep -Eo '[0-9]\.[0-9]+\.[0-9]+' <<< $version)
     minor=$(awk  -F . '{print $2}' <<< "$version")
     major=$(awk  -F . '{print $1}' <<< "$version")
     if [[ $minor -gt 16 && $major -eq 1 || $major -eq 2 ]]; then

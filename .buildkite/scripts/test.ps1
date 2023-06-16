@@ -20,7 +20,11 @@ function withGolang($version) {
 
 function withGoJUnitReport {
     Write-Host "-- Install go-junit-report --"
-    go install github.com/jstemmer/go-junit-report/v2@latest
+    go install github.com/jstemmer/go-junit-report/v2
+}
+
+function goInstallMethod {
+
 }
 
 # Prepare enviroment
