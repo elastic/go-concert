@@ -9,10 +9,9 @@ add_bin_path(){
 }
 
 with_go_junit_report() {
-    go install github.com/jstemmer/go-junit-report/v2@latest
+    version=$(go version)
+    install_method=$(go_install_method "$version")
+    go ${install_method} github.com/jstemmer/go-junit-report
 }
 
-# Required env variables:
-#   WORKSPACE
-#   SETUP_MAGE_VERSION
 WORKSPACE=${WORKSPACE:-"$(pwd)"}

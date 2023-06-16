@@ -23,7 +23,8 @@ retry() {
 go_install_method() {
     local version=$1
     minor=$(awk  -F . '{print $2}' <<< "$version")
-    if [[ $minor -gt 16 ]]; then
+    major=$(awk  -F . '{print $1}' <<< "$version")
+    if [[ $minor -gt 16 && $major -eq 1 || $major -eq 2 ]]; then
         echo "get -u"
     else
         echo "install"

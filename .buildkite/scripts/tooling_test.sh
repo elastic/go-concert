@@ -17,6 +17,12 @@ if [[ ${method} != "get -u" ]]; then
     pass=false
 fi
 
+method=$(go_install_method "2.5.0")
+if [[ ${method} != "get -u" ]]; then
+    echo "Expected method for 2.5.0 'get -u'. Got: $method"
+    pass=false
+fi
+
 if [[ $pass == "false" ]]; then
     echo "Got test errors ^"
     exit 1
