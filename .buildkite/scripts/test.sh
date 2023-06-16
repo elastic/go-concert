@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
+awk --version
+sed --version
 # Prepare enviroment
 source .buildkite/scripts/pre-install-command.sh
 add_bin_path
