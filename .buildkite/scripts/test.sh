@@ -16,4 +16,5 @@ set -e
 
 go-junit-report > "build/junit-${SETUP_GOLANG_VERSION}-linux.xml" < ${OUT_FILE}
 
+ls build
 exit ${status}

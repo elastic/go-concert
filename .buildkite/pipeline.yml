@@ -19,7 +19,7 @@ steps:
           cpu: "8"
           memory: "4G"
         artifact_paths:
-          - "build/junit-{{matrix.go_version}}-linux.xml"
+          - "build/junit-*-linux.xml"
 
       - label: ":windows: Test matrix. Go {{matrix.go_version}}"
         key: test-matrix-win
@@ -36,7 +36,7 @@ steps:
           provider: "gcp"
           image: "family/ci-windows-2022"
         artifact_paths:
-          - "build/junit-{{matrix.go_version}}-win.xml"
+          - "build/junit-*-win.xml"
 
   - label: ":junit: Junit annotate"
     plugins:
