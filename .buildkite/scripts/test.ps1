@@ -40,9 +40,9 @@ function withGoJUnitReport {
     $method = goInstallMethod $version
     echo $method
     if ($method = "install") {
-        go install github.com/jstemmer/go-junit-report/v2
+        go install github.com/jstemmer/go-junit-report
     } else {
-        go get -u github.com/jstemmer/go-junit-report/v2
+        go get -u github.com/jstemmer/go-junit-report
     }
 }
 

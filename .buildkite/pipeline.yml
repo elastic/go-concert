@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/buildkite/pipeline-schema/main/schema.json
 
 steps:
-  - group: ":linux: Test matrix"
+  - group: "Test matrix"
     steps:
       - label: ":linux: Test matrix. Go {{matrix.go_version}}"
         key: test-matrix-lin
