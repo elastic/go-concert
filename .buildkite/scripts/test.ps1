@@ -42,7 +42,7 @@ function withGoJUnitReport {
     if ($method = "install") {
         go install github.com/jstemmer/go-junit-report
     } else {
-        go get -v -u github.com/jstemmer/go-junit-report/v2@latest
+        go get github.com/jstemmer/go-junit-report/v2@latest
     }
 }
 
@@ -50,6 +50,7 @@ function withGoJUnitReport {
 Write-Host $env:PATH
 fixCRLF
 withGolang $env:SETUP_GOLANG_VERSION
+go install github.com/jstemmer/go-junit-report
 withGoJUnitReport
 
 # Run test
