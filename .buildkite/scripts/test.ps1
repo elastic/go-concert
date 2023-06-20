@@ -40,3 +40,5 @@ $ErrorActionPreference = "Stop"
 Get-Content $OUT_FILE | go-junit-report > "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml"
 Get-Content "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml" -Encoding Unicode | Set-Content -Encoding UTF8 "build\junit-$env:SETUP_GOLANG_VERSION-win.xml"
 Remove-Item "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml", "$OUT_FILE"
+
+Exit $EXITCODE
