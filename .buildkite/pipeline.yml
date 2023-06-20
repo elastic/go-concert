@@ -42,6 +42,7 @@ steps:
     plugins:
       - junit-annotate#v2.4.1:
           artifacts: "build/junit-*.xml"
+          fail-build-on-error: true
     agents:
       provider: "gcp" #junit plugin requires docker
     depends_on:
