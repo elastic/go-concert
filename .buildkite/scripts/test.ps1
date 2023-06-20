@@ -33,9 +33,10 @@ withGoJUnitReport
 $ErrorActionPreference = "Continue" # set +e
 mkdir -p build
 $OUT_FILE="build\output-report.out"
-go test "./..." -v > $OUT_FILE | type $OUT_FILE
+go test "./..." -v > $OUT_FILE
 $EXITCODE=$LASTEXITCODE
 $ErrorActionPreference = "Stop"
+Get-Content $OUT_FILE
 
 Get-Content $OUT_FILE | go-junit-report > "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml"
 Get-Content "build\uni-junit-$env:SETUP_GOLANG_VERSION.xml" -Encoding Unicode | Set-Content -Encoding UTF8 "build\junit-$env:SETUP_GOLANG_VERSION-win.xml"
