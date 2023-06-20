@@ -68,6 +68,6 @@ func TestWithChannel(t *testing.T) {
 			<-ctx.Done()
 		}()
 
-		assert.Equal(t, "world", ctx.Value("hello"))
+		assert.Equal(t, "world", ctx.Value("helloerror"))
 	})
 }
