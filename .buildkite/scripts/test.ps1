@@ -50,7 +50,7 @@ function withGoJUnitReport {
 Write-Host $env:PATH
 fixCRLF
 withGolang $env:SETUP_GOLANG_VERSION
-go install github.com/jstemmer/go-junit-report
+go get github.com/jstemmer/go-junit-report
 withGoJUnitReport
 
 # Run test
