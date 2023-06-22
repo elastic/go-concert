@@ -8,7 +8,7 @@ steps:
         matrix:
           setup:
             go_version:
-              - "1.15.8"
+              - "1.15.12"
               - "1.16.4"
         command:
           - ".buildkite/scripts/test.sh"
@@ -26,7 +26,7 @@ steps:
         matrix:
           setup:
             go_version:
-              - "1.15.8"
+              - "1.15.12"
               - "1.16.4"
         command:
           - ".buildkite/scripts/test.ps1"
@@ -50,3 +50,5 @@ steps:
         allow_failure: true
       - step: "test-matrix-win"
         allow_failure: true
+
+#TODO add macos11 && x86_64

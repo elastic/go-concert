@@ -31,3 +31,6 @@ go_install_method() {
         echo "install"
     fi
 }
+
+# Run test
+source .buildkite/scripts/tooling_test.sh
