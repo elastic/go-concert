@@ -8,7 +8,7 @@ function fixCRLF {
     git reset --quiet --hard
 }
 
-function withGolang($version) {
+function withGolangChoco($version) {
     Write-Host "-- Install golang --"
     choco install -y golang --version $version
     $env:ChocolateyInstall = Convert-Path "$((Get-Command choco).Path)\..\.."
@@ -16,6 +16,21 @@ function withGolang($version) {
     refreshenv
     go version
     go env
+}
+
+function withGolang($version) {
+    Write-Host "-- Install golang --"
+    $goUrl = "https://dl.google.com/go/go$goVersion.windows-amd64.msi"
+    $goPackage = "$env:TEMP\go$goVersion.msi"
+    Invoke-WebRequest -Uri $goUrl -OutFile $goPackage
+    Start-Process -Wait -FilePath msiexec.exe -ArgumentList "/i `"$goPackage`" /quiet"
+    $env:Path = "$env:USERPROFILE\go\bin;$env:Path"
+
+    Write-Host "test Path"
+    Write-Host $env:Path
+    Write-Host "...please wait..."
+    refreshenv
+    go version
 }
 
 function withGoJUnitReport {
