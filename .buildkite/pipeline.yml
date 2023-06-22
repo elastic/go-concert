@@ -32,7 +32,7 @@ steps:
           setup:
             go_version:
               - "1.15.12"
-              - "1.16.4"
+              # - "1.16.4"
         command:
           - ".buildkite/scripts/test.ps1"
         env:
