@@ -21,11 +21,11 @@ function withGolangChoco($version) {
 function withGolang($goVersion) {
     Write-Host "-- Install golang --"
     $goUrl = "https://dl.google.com/go/go$goVersion.windows-amd64.msi"
-    Write-Host $goUrl
     $goPackage = "go$goVersion.msi"
     Invoke-WebRequest -Uri $goUrl -OutFile $goPackage
     Start-Process -Wait -FilePath msiexec.exe -ArgumentList "/i `"$goPackage`" /quiet"
     $env:Path = "$env:USERPROFILE\go\bin;$env:Path"
+    dir $env:USERPROFILE\go\bin
 
     Write-Host "test Path"
     Write-Host $env:Path
