@@ -18,7 +18,7 @@ function withGolangChoco($version) {
     go env
 }
 
-function withGolang($version) {
+function withGolang($goVersion) {
     Write-Host "-- Install golang --"
     $goUrl = "https://dl.google.com/go/go$goVersion.windows-amd64.msi"
     Write-Host $goUrl
