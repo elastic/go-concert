@@ -2,10 +2,6 @@
 
 steps:
 
-  - label: ":linux: Tooling test"
-    command:
-      - ".buildkite/scripts/tooling_test.sh"
-
   - group: "Test matrix"
     steps:
       - label: ":linux: Test matrix. Go {{matrix.go_version}}"
