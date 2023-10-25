@@ -39,6 +39,25 @@ steps:
         artifact_paths:
           - "build/junit-*-win.xml"
 
+  - group: "Test matrix"
+    steps:
+      - label: ":mac: Test matrix. Go {{matrix.go_version}}"
+        key: test-matrix-mac
+        matrix:
+          setup:
+            go_version:
+              - "1.19.5"
+              - "1.20.5"
+        command:
+          - ".buildkite/scripts/test.sh"
+        env:
+          SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
+        agents:
+          image: "orka"
+          imagePrefix: "generic-13-ventura-x64"
+        artifact_paths:
+          - "build/junit-*-linux.xml"
+
   - label: ":junit: Junit annotate"
     plugins:
       - junit-annotate#v2.4.1:
