@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euxo pipefail
+postfix=$1
 
 # Prepare enviroment
 source .buildkite/scripts/pre-install-command.sh
@@ -14,6 +15,6 @@ go test "./..." -v 2>&1 | tee ${OUT_FILE}
 status=$?
 set -e
 
-go-junit-report > "build/junit-${SETUP_GOLANG_VERSION}-linux.xml" < ${OUT_FILE}
+go-junit-report > "build/junit-${SETUP_GOLANG_VERSION}-${postfix}.xml" < ${OUT_FILE}
 
 exit ${status}
