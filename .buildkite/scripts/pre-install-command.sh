@@ -20,7 +20,7 @@ with_go() {
     export PATH="${PATH}:${WORKSPACE}/bin"
     retry 5 curl -L -o "${WORKSPACE}/bin/gvm" "${url}"
     chmod +x "${WORKSPACE}/bin/gvm"
-    ls ${WORKSPACE}/bin/ -l
+    ls ${WORKSPACE}/bin/
     eval "$(gvm $go_version)"
     go_path="$(go env GOPATH):$(go env GOPATH)/bin"
     export PATH="${PATH}:${go_path}"
@@ -31,11 +31,10 @@ with_go() {
 get_gvm_link() {
     gvm_version=$1
     platform_type="$(uname)"
-    platform_type_lowercase="${platform_type,,}"
     arch_type="$(uname -m)"
     [[ ${arch_type} == "aarch64" ]] && arch_type="arm64" # gvm do not have 'aarch64' name for archetecture type
     [[ ${arch_type} == "x86_64" ]] && arch_type="amd64"
-    echo "https://github.com/andrewkroh/gvm/releases/download/${gvm_version}/gvm-${platform_type_lowercase}-${arch_type}"
+    echo "https://github.com/andrewkroh/gvm/releases/download/${gvm_version}/gvm-${platform_type}-${arch_type}"
 }
 
 WORKSPACE=${WORKSPACE:-"$(pwd)"}
