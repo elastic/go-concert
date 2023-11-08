@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+
+source .buildkite/scripts/tooling.sh
+
+if [[ "$BUILDKITE_PIPELINE_SLUG" == "go-concert" && "$BUILDKITE_STEP_KEY" == "test-matrix-mac" ]]; then
+    echo "--- prepare env"
+    source .buildkite/scripts/pre-install-command.sh
+    with_go ${SETUP_GOLANG_VERSION}
+fi

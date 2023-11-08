@@ -1,5 +1,8 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/buildkite/pipeline-schema/main/schema.json
 
+env:
+    GVM: "v0.5.0"
+
 steps:
 
   - group: "Test matrix"
@@ -12,7 +15,7 @@ steps:
               - "1.19.5"
               - "1.20.5"
         command:
-          - ".buildkite/scripts/test.sh"
+          - ".buildkite/scripts/test.sh linux"
         env:
           SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
         agents:
@@ -20,7 +23,7 @@ steps:
           cpu: "8"
           memory: "4G"
         artifact_paths:
-          - "build/junit-*-linux.xml"
+          - "build/junit-*.xml"
 
       - label: ":windows: Test matrix. Go {{matrix.go_version}}"
         key: test-matrix-win
@@ -39,6 +42,23 @@ steps:
         artifact_paths:
           - "build/junit-*-win.xml"
 
+      - label: ":mac: Test matrix. Go {{matrix.go_version}}"
+        key: test-matrix-mac
+        matrix:
+          setup:
+            go_version:
+              - "1.19.5"
+              - "1.20.5"
+        command:
+          - ".buildkite/scripts/test.sh mac"
+        env:
+          SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
+        agents:
+          provider: "orka"
+          imagePrefix: "generic-13-ventura-x64"
+        artifact_paths:
+          - "build/junit-*.xml"
+
   - label: ":junit: Junit annotate"
     plugins:
       - junit-annotate#v2.4.1:
@@ -51,5 +71,5 @@ steps:
         allow_failure: true
       - step: "test-matrix-win"
         allow_failure: true
-
-#TODO add macos11 && x86_64
+      - step: "test-matrix-mac"
+        allow_failure: true
