@@ -12,7 +12,6 @@ steps:
         matrix:
           setup:
             go_version:
-              - "1.19.5"
               - "1.20.5"
         command:
           - ".buildkite/scripts/test.sh linux"
@@ -30,7 +29,6 @@ steps:
         matrix:
           setup:
             go_version:
-              - "1.19.5"
               - "1.20.5"
         command:
           - ".buildkite/scripts/test.ps1"
@@ -47,7 +45,6 @@ steps:
         matrix:
           setup:
             go_version:
-              - "1.19.5"
               - "1.20.5"
         command:
           - ".buildkite/scripts/test.sh mac"
