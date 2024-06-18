@@ -19,8 +19,7 @@ package concert
 
 import (
 	"sync"
-
-	"github.com/elastic/go-concert/atomic"
+	"sync/atomic"
 )
 
 // RefCount is an atomic reference counter. It can be used to track a shared
@@ -47,7 +46,7 @@ const refCountOops uint32 = refCountFree - 1
 
 // Retain increases the ref count.
 func (c *RefCount) Retain() {
-	if c.count.Inc() == 0 {
+	if c.count.Add(1) == 0 {
 		panic("retaining released ref count")
 	}
 }
@@ -58,7 +57,7 @@ func (c *RefCount) Retain() {
 // If an Action is configured, then this action will be run once the
 // refcount becomes free.
 func (c *RefCount) Release() bool {
-	switch c.count.Dec() {
+	switch c.count.Add(^uint32(0)) {
 	case refCountFree:
 		if c.Action != nil {
 			c.Action(c.err)
