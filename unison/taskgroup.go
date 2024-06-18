@@ -19,10 +19,11 @@ package unison
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/elastic/go-concert/ctxtool"
-	"github.com/urso/sderr"
 )
 
 // Group interface, that can be used to start tasks. The tasks started will
@@ -199,7 +200,7 @@ func (t *TaskGroup) Context() context.Context {
 func (t *TaskGroup) Wait() error {
 	errs := t.waitErrors()
 	if len(errs) > 0 {
-		return sderr.WrapAll(errs, "task failures")
+		return fmt.Errorf("task failures: %w", errors.Join(errs...))
 	}
 	return nil
 }

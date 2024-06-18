@@ -20,6 +20,7 @@ package ctxtool
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -30,16 +31,16 @@ func TestWithFunc(t *testing.T) {
 	t.Run("executed on cleanup 'cancel' call", func(t *testing.T) {
 		defer goleak.VerifyNone(t)
 
-		count := 0
+		var count atomic.Int64
 		wg := makeWaitGroup((1)) // func is always run asynchronously, wait
 		ctx, cancel := WithFunc(context.Background(), func() {
 			defer wg.Done()
-			count++
+			count.Add(1)
 		})
 		cancel()
 		wg.Wait()
 		assert.NotNil(t, ctx)
-		assert.Equal(t, 1, count)
+		assert.Equal(t, int64(1), count.Load())
 	})
 
 	t.Run("executed func on cancel", func(t *testing.T) {
@@ -51,13 +52,16 @@ func TestWithFunc(t *testing.T) {
 		)
 
 		done := make(chan struct{})
-		count := 0
+		var count atomic.Int64
 		ctx, cancel1 = context.WithCancel(context.Background())
-		ctx, cancel2 = WithFunc(ctx, func() { close(done); count++ })
+		ctx, cancel2 = WithFunc(ctx, func() {
+			count.Add(1)
+			close(done)
+		})
 		defer cancel2()
 		cancel1()
 		<-done
-		assert.Equal(t, 1, count)
+		assert.Equal(t, int64(1), count.Load())
 	})
 
 	t.Run("wait for other before we continue cancelling", func(t *testing.T) {

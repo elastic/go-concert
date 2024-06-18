@@ -110,25 +110,25 @@ func TestPeriodic(t *testing.T) {
 }
 
 func TestRetryUntil(t *testing.T) {
-	duration := 250 * time.Millisecond
-	period := 50 * time.Millisecond
+	short := 50 * time.Millisecond
+	forever := 1 * time.Hour
 	neverError := func(_ canceler) error { return nil }
 	alwaysError := func(_ canceler) error { return errors.New("you will never get rid of me") }
 
 	t.Run("retryuntil returns nil if fn no longer returns an error", func(t *testing.T) {
-		err := RetryUntil(context.Background(), duration, period, neverError)
+		err := RetryUntil(context.Background(), forever, forever, neverError)
 		assert.NoError(t, err)
 	})
 
 	t.Run("retryuntil returns deadline exceeded error", func(t *testing.T) {
-		err := RetryUntil(context.Background(), duration, period, alwaysError)
+		err := RetryUntil(context.Background(), short, forever, alwaysError)
 		assert.Error(t, err)
 	})
 
 	t.Run("retryuntil does not return error if context is canceled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		err := RetryUntil(ctx, duration, period, alwaysError)
+		err := RetryUntil(ctx, forever, forever, alwaysError)
 		assert.NoError(t, err)
 	})
 }
