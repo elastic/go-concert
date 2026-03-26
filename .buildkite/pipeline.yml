@@ -51,7 +51,7 @@ steps:
         env:
           SETUP_GOLANG_VERSION: "{{matrix.go_version}}"
         agents:
-          provider: "orka"
+          provider: "orka3"
           imagePrefix: "generic-13-ventura-x64"
         artifact_paths:
           - "build/junit-*.xml"
